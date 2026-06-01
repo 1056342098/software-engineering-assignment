@@ -1,0 +1,59 @@
+services:
+  mysql:
+    image: ${IMAGE_REGISTRY:-docker.io}/library/mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: school_manager
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        IMAGE_REGISTRY: ${IMAGE_REGISTRY:-docker.io}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_manager?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      APP_JWT_SECRET: dev-only-change-me-dev-only-change-me
+      APP_AES_KEY_BASE64: av36BYZ70AHlgYpKx4HFwEmgUk2yAhSv7dP2cYkY3cQ=
+      APP_POLICY_DIR: /data/policy-files
+      APP_APPROVAL_DIR: /data/approval-files
+    ports:
+      - "8080:8080"
+    volumes:
+      - policy_files:/data/policy-files
+      - approval_files:/data/approval-files
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        IMAGE_REGISTRY: ${IMAGE_REGISTRY:-docker.io}
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  policy_files:
+  approval_files:
