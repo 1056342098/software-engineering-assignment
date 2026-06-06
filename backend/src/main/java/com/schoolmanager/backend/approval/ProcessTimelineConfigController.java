@@ -36,6 +36,7 @@ public class ProcessTimelineConfigController {
         // Simple update approach: update existing, add new, remove deleted
         // For simplicity and given the UI, we'll just delete all and insert new ones
         timelineNodeRepository.deleteAll(existingNodes);
+        timelineNodeRepository.flush();
         
         for (int i = 0; i < newNodes.size(); i++) {
             ProcessTimelineNode node = newNodes.get(i);
