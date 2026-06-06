@@ -12,7 +12,7 @@ type TimelineNode = {
 export function TimelineAdminPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [type, setType] = useState<"PARTY" | "LEAGUE">("PARTY");
+  const [type, setType] = useState<"PARTY_APPLY" | "LEAGUE_APPLY">("PARTY_APPLY");
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +79,10 @@ export function TimelineAdminPage() {
       <div className="card">
         <div className="cardHeader">
           <div className="row" style={{ gap: 10 }}>
-            <button className={`btn ${type === "PARTY" ? "btnPrimary" : ""}`} onClick={() => setType("PARTY")}>
+            <button className={`btn ${type === "PARTY_APPLY" ? "btnPrimary" : ""}`} onClick={() => setType("PARTY_APPLY")}>
               入党流程
             </button>
-            <button className={`btn ${type === "LEAGUE" ? "btnPrimary" : ""}`} onClick={() => setType("LEAGUE")}>
+            <button className={`btn ${type === "LEAGUE_APPLY" ? "btnPrimary" : ""}`} onClick={() => setType("LEAGUE_APPLY")}>
               入团流程
             </button>
           </div>

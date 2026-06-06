@@ -93,7 +93,16 @@ public class ApprovalController {
 	@GetMapping("/progress/me")
 	@PreAuthorize("hasRole('STUDENT')")
 	public ApiResponse<ProgressResp> myProgress() {
-		long uid = currentUser.id();
+		return getProgressForUser(currentUser.id());
+	}
+
+	@GetMapping("/progress/student/{studentId}")
+	@PreAuthorize("hasAnyRole('TEACHER','LEADER')")
+	public ApiResponse<ProgressResp> studentProgress(@PathVariable long studentId) {
+		return getProgressForUser(studentId);
+	}
+
+	private ApiResponse<ProgressResp> getProgressForUser(long uid) {
 		var items = approvalService.getProgressViews(uid).stream()
 				.map(p -> new ProgressItemDto(
 						p.approvalType(),

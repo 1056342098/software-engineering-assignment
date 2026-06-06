@@ -31,6 +31,8 @@ export function PendingPage() {
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const [studentProgress, setStudentProgress] = useState<{ serverNow: string; items: any[] } | null>(null);
+
   const selected = useMemo(() => approvals.find((a) => a.id === selectedId) ?? null, [approvals, selectedId]);
 
   async function refresh() {
@@ -48,8 +50,16 @@ export function PendingPage() {
     if (!selectedId) return;
     setError(null);
     setDetail(null);
+    setStudentProgress(null);
     void apiFetch<ApprovalDetailDto>(`/approvals/${selectedId}`, { method: "GET" })
-      .then(setDetail)
+      .then((res) => {
+        setDetail(res);
+        if ((res.type === "PARTY_APPLY" || res.type === "LEAGUE_APPLY") && res.applicantId) {
+          apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${res.applicantId}`, { method: "GET" })
+            .then(setStudentProgress)
+            .catch(() => {});
+        }
+      })
       .catch((e) => setError((e as Error).message));
   }, [selectedId]);
 
@@ -230,6 +240,45 @@ export function PendingPage() {
                       style={{ minHeight: 96, resize: "vertical" }}
                     />
                   </div>
+
+                  {studentProgress && studentProgress.items.map((it: any) => {
+                    if (it.approvalType !== detail.type) return null;
+                    return (
+                      <div key={it.approvalType} className="card" style={{ background: "var(--surface-2)" }}>
+                        <div className="cardHeader">
+                          <div style={{ fontWeight: 600 }}>学生当前流程进度</div>
+                          <span className="badge badgePrimary">{it.stageName}</span>
+                        </div>
+                        <div className="cardBody">
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            {it.stages.map((s: any, idx: number) => (
+                              <div key={s.code} className="row" style={{ alignItems: "center", gap: 8 }}>
+                                <span
+                                  className={
+                                    idx < it.stageIndex
+                                      ? "badge badgeOk"
+                                      : idx === it.stageIndex
+                                        ? "badge badgePrimary"
+                                        : "badge"
+                                  }
+                                  style={
+                                    idx === it.stageIndex
+                                      ? { fontWeight: 800, border: "2px solid var(--primary)" }
+                                      : undefined
+                                  }
+                                >
+                                  {s.name}
+                                </span>
+                                {idx < it.stages.length - 1 && (
+                                  <span style={{ color: "var(--muted)", fontWeight: 700 }}>→</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   <div className="row" style={{ justifyContent: "flex-end" }}>
                     <button className="btn btnPrimary" onClick={() => void act("approve")} disabled={detail.status !== "PENDING"}>

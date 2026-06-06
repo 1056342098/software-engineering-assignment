@@ -10,16 +10,16 @@ CREATE TABLE process_timeline_node (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO process_timeline_node (approval_type, stage_index, stage_code, stage_name, interval_days) VALUES
-('PARTY', 0, 'APPLICANT', '入党申请人', 0),
-('PARTY', 1, 'ACTIVE', '积极分子', 180),
-('PARTY', 2, 'DEVELOPMENT', '发展对象', 365),
-('PARTY', 3, 'PROBATIONARY', '预备党员', 30),
-('PARTY', 4, 'FULL', '正式党员', 365);
+('PARTY_APPLY', 0, 'APPLICANT', '入党申请人', 0),
+('PARTY_APPLY', 1, 'ACTIVE', '积极分子', 180),
+('PARTY_APPLY', 2, 'DEVELOPMENT', '发展对象', 365),
+('PARTY_APPLY', 3, 'PROBATIONARY', '预备党员', 30),
+('PARTY_APPLY', 4, 'FULL', '正式党员', 365);
 
 INSERT INTO process_timeline_node (approval_type, stage_index, stage_code, stage_name, interval_days) VALUES
-('LEAGUE', 0, 'APPLICANT', '入团申请', 0),
-('LEAGUE', 1, 'PROBATIONARY', '预备团员', 90),
-('LEAGUE', 2, 'FULL', '正式团员', 180);
+('LEAGUE_APPLY', 0, 'APPLICANT', '入团申请', 0),
+('LEAGUE_APPLY', 1, 'PROBATIONARY', '预备团员', 90),
+('LEAGUE_APPLY', 2, 'FULL', '正式团员', 180);
 
 CREATE TABLE qa_question (
   id BIGINT NOT NULL AUTO_INCREMENT,

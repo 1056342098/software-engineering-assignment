@@ -28,6 +28,7 @@ export function StudentDetailPage() {
   const params = useParams();
   const studentId = Number(params.studentId);
   const [data, setData] = useState<ProfileResp | null>(null);
+  const [studentProgress, setStudentProgress] = useState<{ serverNow: string; items: any[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +37,10 @@ export function StudentDetailPage() {
     void apiFetch<ProfileResp>(`/profile/students/${studentId}`, { method: "GET" })
       .then(setData)
       .catch((e) => setError((e as Error).message));
+      
+    void apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${studentId}`, { method: "GET" })
+      .then(setStudentProgress)
+      .catch(() => {});
   }, [studentId]);
 
   const comps = data?.public?.competitions ?? [];
@@ -162,6 +167,53 @@ export function StudentDetailPage() {
               </div>
             </div>
           </section>
+          
+          {studentProgress && studentProgress.items.length > 0 && (
+            <section className="card" style={{ gridColumn: "1 / -1" }}>
+              <div className="cardHeader">
+                <div style={{ fontWeight: 600 }}>党团事务进度</div>
+              </div>
+              <div className="cardBody">
+                <div className="twoCol">
+                  {studentProgress.items.map((it: any) => (
+                    <div key={it.approvalType} className="card" style={{ background: "var(--surface-2)" }}>
+                      <div className="cardHeader">
+                        <div style={{ fontWeight: 600 }}>{it.approvalType === "PARTY_APPLY" ? "入党流程" : "入团流程"}</div>
+                        <span className="badge badgePrimary">{it.stageName}</span>
+                      </div>
+                      <div className="cardBody">
+                        <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {it.stages.map((s: any, idx: number) => (
+                            <div key={s.code} className="row" style={{ alignItems: "center", gap: 8 }}>
+                              <span
+                                className={
+                                  idx < it.stageIndex
+                                    ? "badge badgeOk"
+                                    : idx === it.stageIndex
+                                      ? "badge badgePrimary"
+                                      : "badge"
+                                }
+                                style={
+                                  idx === it.stageIndex
+                                    ? { fontWeight: 800, border: "2px solid var(--primary)" }
+                                    : undefined
+                                }
+                              >
+                                {s.name}
+                              </span>
+                              {idx < it.stages.length - 1 && (
+                                <span style={{ color: "var(--muted)", fontWeight: 700 }}>→</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       ) : null}
     </div>
