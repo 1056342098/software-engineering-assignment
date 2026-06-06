@@ -132,15 +132,29 @@ export function ApprovalsPage() {
               </div>
               <div className="cardBody">
                 <div className="grid" style={{ gap: 10 }}>
-                  <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     {it.stages.map((s, idx) => (
-                      <span
-                        key={s.code}
-                        className={idx === it.stageIndex ? "badge badgePrimary" : "badge"}
-                        style={idx === it.stageIndex ? { fontWeight: 800 } : undefined}
-                      >
-                        {s.name}
-                      </span>
+                      <div key={s.code} className="row" style={{ alignItems: "center", gap: 8 }}>
+                        <span
+                          className={
+                            idx < it.stageIndex
+                              ? "badge badgeOk"
+                              : idx === it.stageIndex
+                                ? "badge badgePrimary"
+                                : "badge"
+                          }
+                          style={
+                            idx === it.stageIndex
+                              ? { fontWeight: 800, border: "2px solid var(--primary)" }
+                              : undefined
+                          }
+                        >
+                          {s.name}
+                        </span>
+                        {idx < it.stages.length - 1 && (
+                          <span style={{ color: "var(--muted)", fontWeight: 700 }}>→</span>
+                        )}
+                      </div>
                     ))}
                   </div>
 

@@ -2,8 +2,10 @@ package com.schoolmanager.backend.approval;
 
 import com.schoolmanager.backend.approval.entity.Approval;
 import com.schoolmanager.backend.approval.entity.ApprovalProcessProgress;
+import com.schoolmanager.backend.approval.entity.ProcessTimelineNode;
 import com.schoolmanager.backend.approval.repo.ApprovalProcessProgressRepository;
 import com.schoolmanager.backend.approval.repo.ApprovalRepository;
+import com.schoolmanager.backend.approval.repo.ProcessTimelineNodeRepository;
 import com.schoolmanager.backend.common.ApiException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,12 +15,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ApprovalProcessProgressService {
-	public static final int CYCLE_DAYS = 0;
 
-	public record StageDef(String code, String name) {
+	public record StageDef(String code, String name, int intervalDays) {
 	}
 
 	public record ProgressView(
@@ -40,18 +42,21 @@ public class ApprovalProcessProgressService {
 
 	private final ApprovalRepository approvalRepository;
 	private final ApprovalProcessProgressRepository progressRepository;
+	private final ProcessTimelineNodeRepository timelineNodeRepository;
 
 	public ApprovalProcessProgressService(
 			ApprovalRepository approvalRepository,
-			ApprovalProcessProgressRepository progressRepository) {
+			ApprovalProcessProgressRepository progressRepository,
+			ProcessTimelineNodeRepository timelineNodeRepository) {
 		this.approvalRepository = approvalRepository;
 		this.progressRepository = progressRepository;
+		this.timelineNodeRepository = timelineNodeRepository;
 	}
 
 	@Transactional
 	public SubmissionStage prepareSubmission(long userId, String approvalType, Instant now) {
 		List<StageDef> stages = stagesForType(approvalType);
-		if (stages == null) {
+		if (stages.isEmpty()) {
 			return new SubmissionStage(0, null);
 		}
 
@@ -71,7 +76,7 @@ public class ApprovalProcessProgressService {
 	@Transactional
 	public void onSubmitted(Approval approval) {
 		List<StageDef> stages = stagesForType(approval.getType());
-		if (stages == null) {
+		if (stages.isEmpty()) {
 			return;
 		}
 		Instant now = Instant.now();
@@ -85,7 +90,7 @@ public class ApprovalProcessProgressService {
 	@Transactional
 	public void onDecided(Approval approval, String decision, Instant decidedAt) {
 		List<StageDef> stages = stagesForType(approval.getType());
-		if (stages == null) {
+		if (stages.isEmpty()) {
 			return;
 		}
 		ApprovalProcessProgress p = ensureProgress(approval.getApplicant().getId(), approval.getType(), decidedAt);
@@ -101,14 +106,13 @@ public class ApprovalProcessProgressService {
 				p.setStageIndex(stageIndex);
 				p.setStageCode(stages.get(stageIndex).code());
 			}
-			p.setNextDueAt(stageIndex >= stages.size() - 1 ? null : decidedAt.plus(CYCLE_DAYS, ChronoUnit.DAYS));
+			int nextInterval = stages.get(stageIndex).intervalDays();
+			p.setNextDueAt(stageIndex >= stages.size() - 1 ? null : decidedAt.plus(nextInterval, ChronoUnit.DAYS));
 		} else if (ApprovalService.STATUS_REJECTED.equals(decision)) {
-			p.setNextDueAt(decidedAt.plus(CYCLE_DAYS, ChronoUnit.DAYS));
+			int currentInterval = stages.get(stageIndex).intervalDays();
+			p.setNextDueAt(decidedAt.plus(currentInterval, ChronoUnit.DAYS));
 		} else if (ApprovalService.STATUS_REVOKED.equals(decision)) {
 			// When revoked, just keep the current nextDueAt or reset properly if needed.
-			// The important part is clearing the pendingApprovalId which is done dynamically by the getView method
-			// since it queries for STATUS_PENDING applications.
-			// Let's also ensure the lastResult reflects the revocation.
 		}
 
 		p.setLastApprovalId(approval.getId());
@@ -120,7 +124,7 @@ public class ApprovalProcessProgressService {
 	@Transactional(readOnly = true)
 	public ProgressView getView(long userId, String approvalType) {
 		List<StageDef> stages = stagesForType(approvalType);
-		if (stages == null) {
+		if (stages.isEmpty()) {
 			throw new ApiException(400, "INVALID_TYPE");
 		}
 		ApprovalProcessProgress p = progressRepository.findByUserIdAndApprovalType(userId, approvalType)
@@ -162,7 +166,7 @@ public class ApprovalProcessProgressService {
 
 	private ApprovalProcessProgress ensureProgress(long userId, String approvalType, Instant now) {
 		List<StageDef> stages = stagesForType(approvalType);
-		if (stages == null) {
+		if (stages.isEmpty()) {
 			throw new ApiException(400, "INVALID_TYPE");
 		}
 		Optional<ApprovalProcessProgress> op = progressRepository.findByUserIdAndApprovalType(userId, approvalType);
@@ -190,24 +194,11 @@ public class ApprovalProcessProgressService {
 		return i;
 	}
 
-	private static List<StageDef> stagesForType(String approvalType) {
+	private List<StageDef> stagesForType(String approvalType) {
 		String t = approvalType == null ? "" : approvalType.trim().toUpperCase(Locale.ROOT);
-		if (ApprovalService.TYPE_PARTY.equals(t)) {
-			return List.of(
-					new StageDef("APPLICANT", "入党申请人"),
-					new StageDef("ACTIVE", "积极分子"),
-					new StageDef("DEVELOPMENT", "发展对象"),
-					new StageDef("PROBATIONARY", "预备党员"),
-					new StageDef("FULL", "正式党员")
-			);
-		}
-		if (ApprovalService.TYPE_LEAGUE.equals(t)) {
-			return List.of(
-					new StageDef("APPLICANT", "入团申请"),
-					new StageDef("PROBATIONARY", "预备团员"),
-					new StageDef("FULL", "正式团员")
-			);
-		}
-		return null;
+		List<ProcessTimelineNode> nodes = timelineNodeRepository.findByApprovalTypeOrderByStageIndexAsc(t);
+		return nodes.stream()
+				.map(n -> new StageDef(n.getStageCode(), n.getStageName(), n.getIntervalDays()))
+				.collect(Collectors.toList());
 	}
 }

@@ -11,6 +11,8 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { Navigate } from "react-router-dom";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { StudentsPage } from "./pages/StudentsPage";
+import { TimelineAdminPage } from "./pages/TimelineAdminPage";
+import { QaTestPage } from "./pages/QaTestPage";
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/students/:studentId" element={<StudentDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/timeline-admin" element={<TimelineAdminPage />} />
+          <Route path="/selftest" element={<QaTestPage />} />
         </Route>
       </Route>
     </Routes>
