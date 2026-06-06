@@ -35,7 +35,18 @@ export async function apiFetch<T>(
     return resp as unknown as T;
   }
 
-  const json = (await resp.json()) as ApiResponse<T>;
+  let json: any;
+  try {
+    const text = await resp.text();
+    if (!text) {
+      json = { code: 0, message: "OK", data: null };
+    } else {
+      json = JSON.parse(text);
+    }
+  } catch (e) {
+    throw new Error(`Invalid JSON response: ${e}`);
+  }
+
   if (!resp.ok || json.code !== 0) {
     throw new Error(json.message || `HTTP_${resp.status}`);
   }

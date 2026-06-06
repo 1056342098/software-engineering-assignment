@@ -31,7 +31,7 @@ export function LoginPage() {
           <form onSubmit={onSubmit} className="grid" style={{ gap: 10 }}>
             <div className="grid" style={{ gap: 6 }}>
               <div className="kvKey">学号/工号</div>
-              <input className="input" value={loginName} onChange={(e) => setLoginName(e.target.value)} />
+              <input className="input" name="loginName" value={loginName} onChange={(e) => setLoginName(e.target.value)} />
             </div>
             <div className="grid" style={{ gap: 6 }}>
               <div className="kvKey">密码</div>
