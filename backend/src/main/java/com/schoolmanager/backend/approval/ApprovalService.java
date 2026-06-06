@@ -101,7 +101,11 @@ public class ApprovalService {
 	}
 
 	public List<Approval> listAssigned(long approverId) {
-		return approvalRepository.findByApprover_IdOrderByIdDesc(approverId);
+		List<Long> ids = assigneeRepository.findApprovalIdsByApprover(approverId);
+		if (ids.isEmpty()) {
+			return List.of();
+		}
+		return approvalRepository.findByIdInWithApplicant(ids);
 	}
 
 	public List<ApprovalAssignee> listAssignees(long approvalId) {
@@ -241,10 +245,11 @@ public class ApprovalService {
 			approval.setStageCode(stage.stageCode());
 		}
 		try {
-			approval.setFormJson(objectMapper.writeValueAsString(Map.of(
-					"subject", approval.getSubject(),
-					"content", approval.getContent(),
-					"approverIds", uniqueApproverIds)));
+			Map<String, Object> formMap = new java.util.HashMap<>();
+			formMap.put("subject", approval.getSubject());
+			formMap.put("content", approval.getContent());
+			formMap.put("approverIds", uniqueApproverIds);
+			approval.setFormJson(objectMapper.writeValueAsString(formMap));
 		} catch (Exception e) {
 			throw new ApiException(400, "INVALID_FORM");
 		}
