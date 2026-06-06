@@ -151,7 +151,7 @@ export function ApprovalApplyPage() {
                   </div>
                 ) : (
                   <div className="muted" style={{ fontSize: 12 }}>
-                    可选，单个文件建议不超过 20MB。
+                    可选，单个文件建议不超过 30MB。
                   </div>
                 )}
               </div>

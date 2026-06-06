@@ -420,7 +420,7 @@ public class ApprovalService {
 			if (f == null || f.isEmpty()) {
 				continue;
 			}
-			if (f.getSize() > 20L * 1024 * 1024) {
+			if (f.getSize() > 30L * 1024 * 1024) {
 				throw new ApiException(400, "FILE_TOO_LARGE");
 			}
 			String originalName = f.getOriginalFilename() == null ? "attachment" : f.getOriginalFilename();
