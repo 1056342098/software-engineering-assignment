@@ -53,6 +53,21 @@ public class ApprovalProcessProgressService {
 		this.timelineNodeRepository = timelineNodeRepository;
 	}
 
+	private Instant calculateNextDueAt(ApprovalProcessProgress p, List<StageDef> stages) {
+		int idx = clampStageIndex(p.getStageIndex(), stages);
+		if (idx >= stages.size() - 1) {
+			return null;
+		}
+		int interval = stages.get(idx).intervalDays();
+		if (p.getLastAssessedAt() != null) {
+			return p.getLastAssessedAt().plus(interval, ChronoUnit.DAYS);
+		} else if (p.getCreatedAt() != null) {
+			return p.getCreatedAt().plus(interval, ChronoUnit.DAYS);
+		} else {
+			return Instant.now().plus(interval, ChronoUnit.DAYS);
+		}
+	}
+
 	@Transactional
 	public SubmissionStage prepareSubmission(long userId, String approvalType, Instant now) {
 		List<StageDef> stages = stagesForType(approvalType);
@@ -64,7 +79,8 @@ public class ApprovalProcessProgressService {
 		if (isFinalStage(p, stages)) {
 			throw new ApiException(400, "ALREADY_FINAL_STAGE");
 		}
-		if (p.getNextDueAt() != null && now.isBefore(p.getNextDueAt())) {
+		Instant actualNextDueAt = calculateNextDueAt(p, stages);
+		if (actualNextDueAt != null && now.isBefore(actualNextDueAt)) {
 			throw new ApiException(400, "ASSESSMENT_NOT_DUE");
 		}
 		if (approvalRepository.existsByApplicant_IdAndTypeAndStatus(userId, approvalType, ApprovalService.STATUS_PENDING)) {
@@ -83,7 +99,6 @@ public class ApprovalProcessProgressService {
 		ApprovalProcessProgress p = ensureProgress(approval.getApplicant().getId(), approval.getType(), now);
 		p.setLastApprovalId(approval.getId());
 		p.setLastResult(ApprovalService.STATUS_PENDING);
-		p.setNextDueAt(null);
 		progressRepository.save(p);
 	}
 
@@ -150,6 +165,8 @@ public class ApprovalProcessProgressService {
 		}
 		String stageName = stages.get(idx).name();
 
+		Instant nextDueAt = calculateNextDueAt(p, stages);
+
 		return new ProgressView(
 				approvalType,
 				idx,
@@ -158,7 +175,7 @@ public class ApprovalProcessProgressService {
 				stages,
 				p.getLastResult(),
 				p.getLastAssessedAt(),
-				p.getNextDueAt(),
+				nextDueAt,
 				p.getLastApprovalId(),
 				pendingId
 		);

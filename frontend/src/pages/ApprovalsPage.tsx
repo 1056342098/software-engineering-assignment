@@ -170,13 +170,19 @@ export function ApprovalsPage() {
                   <TimeAxis serverNow={progress.serverNow} nextDueAt={it.nextDueAt} />
 
                   <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-                    <Link
-                      to={`/approvals/new?type=${it.approvalType}`}
-                      className="btn btnPrimary"
-                      style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
-                    >
-                      去提交考核
-                    </Link>
+                    {it.pendingApprovalId ? (
+                      <button className="btn btnPrimary" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                        已提交
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/approvals/new?type=${it.approvalType}`}
+                        className="btn btnPrimary"
+                        style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                      >
+                        去提交考核
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

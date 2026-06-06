@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 type TimelineNode = {
   stageCode: string;
   stageName: string;
-  intervalDays: number;
+  intervalDays: number | string;
 };
 
 export function TimelineAdminPage() {
@@ -44,9 +44,13 @@ export function TimelineAdminPage() {
     setLoading(true);
     setError(null);
     try {
+      const payload = nodes.map(n => ({
+        ...n,
+        intervalDays: typeof n.intervalDays === "string" ? 0 : n.intervalDays
+      }));
       await apiFetch(`/timeline-config/${type}`, {
         method: "PUT",
-        body: JSON.stringify(nodes),
+        body: JSON.stringify(payload),
       });
       alert("保存成功！");
     } catch (e) {
@@ -119,7 +123,10 @@ export function TimelineAdminPage() {
                       className="input"
                       style={{ width: 80 }}
                       value={node.intervalDays}
-                      onChange={(e) => handleNodeChange(index, "intervalDays", parseInt(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleNodeChange(index, "intervalDays", val === "" ? "" : parseInt(val) || 0);
+                      }}
                     />
                     <span className="muted">天后可进入下一阶段</span>
                   </div>
