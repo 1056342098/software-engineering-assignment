@@ -16,7 +16,7 @@ import java.util.Optional;
 
 @Service
 public class ApprovalProcessProgressService {
-	public static final int CYCLE_DAYS = 30;
+	public static final int CYCLE_DAYS = 0;
 
 	public record StageDef(String code, String name) {
 	}
