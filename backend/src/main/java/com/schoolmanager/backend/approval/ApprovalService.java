@@ -325,7 +325,7 @@ public class ApprovalService {
 		approvalRepository.save(approval);
 		progressService.onDecided(approval, STATUS_APPROVED, now);
 		appendLog(approval, operatorId, "APPROVE", comment);
-		opLogService.log(operatorId, "APPROVAL_APPROVE", "approval", approvalId, Map.of("comment", comment));
+		opLogService.log(operatorId, "APPROVAL_APPROVE", "approval", approvalId, comment == null ? null : Map.of("comment", comment));
 	}
 
 	@Transactional
@@ -361,7 +361,7 @@ public class ApprovalService {
 		approvalRepository.save(approval);
 		progressService.onDecided(approval, STATUS_REJECTED, now);
 		appendLog(approval, operatorId, "REJECT", comment);
-		opLogService.log(operatorId, "APPROVAL_REJECT", "approval", approvalId, Map.of("comment", comment));
+		opLogService.log(operatorId, "APPROVAL_REJECT", "approval", approvalId, comment == null ? null : Map.of("comment", comment));
 	}
 
 	@Transactional
@@ -400,7 +400,7 @@ public class ApprovalService {
 		}
 
 		appendLog(approval, operatorId, STATUS_REVOKED, comment);
-		opLogService.log(operatorId, "APPROVAL_REVOKE", "approval", approvalId, Map.of("comment", comment));
+		opLogService.log(operatorId, "APPROVAL_REVOKE", "approval", approvalId, comment == null ? null : Map.of("comment", comment));
 	}
 
 	@Transactional
