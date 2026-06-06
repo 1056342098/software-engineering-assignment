@@ -55,3 +55,43 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   }
   return await resp.blob();
 }
+
+export function apiFetchWithProgress<T>(
+  path: string,
+  fd: FormData,
+  onProgress: (pct: number) => void
+): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const token = getToken();
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Accept", "application/json");
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        const json = JSON.parse(xhr.responseText) as ApiResponse<T>;
+        if (xhr.status >= 200 && xhr.status < 300 && json.code === 0) {
+          resolve(json.data);
+        } else {
+          reject(new Error(json.message || `HTTP_${xhr.status}`));
+        }
+      } catch (e) {
+        reject(new Error(`HTTP_${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network Error"));
+    xhr.send(fd);
+  });
+}

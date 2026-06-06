@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { apiFetch } from "../api";
+import { apiFetch, apiFetchWithProgress } from "../api";
 
 type UserDto = { id: number; loginName: string; realName: string };
 
@@ -15,6 +15,7 @@ export function ApprovalApplyPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export function ApprovalApplyPage() {
       return;
     }
     setSubmitting(true);
+    setUploadProgress(0);
     try {
       const fd = new FormData();
       fd.append("type", type);
@@ -80,12 +82,13 @@ export function ApprovalApplyPage() {
       for (const f of files) {
         fd.append("files", f, f.name);
       }
-      await apiFetch("/approvals/apply", { method: "POST", body: fd });
+      await apiFetchWithProgress("/approvals/apply", fd, setUploadProgress);
       nav("/approvals");
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   }
 
@@ -156,7 +159,12 @@ export function ApprovalApplyPage() {
                 )}
               </div>
 
-              <div className="row" style={{ justifyContent: "flex-end" }}>
+              <div className="row" style={{ justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
+                {uploadProgress !== null && (
+                  <div className="muted" style={{ fontSize: 14 }}>
+                    上传进度：{uploadProgress}%
+                  </div>
+                )}
                 <button className="btn btnPrimary" onClick={submit} disabled={submitting}>
                   {submitting ? "提交中…" : "发送申请"}
                 </button>

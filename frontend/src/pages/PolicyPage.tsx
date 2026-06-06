@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { apiFetch, apiFetchBlob } from "../api";
+import { apiFetch, apiFetchBlob, apiFetchWithProgress } from "../api";
 import { useAuth } from "../auth";
 
 type PolicyDoc = { id: number; title: string; category: string | null; fileName: string | null; status: string };
@@ -15,6 +15,7 @@ export function PolicyPage() {
   const [category, setCategory] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [viewMode, setViewMode] = useState<"all" | "mine">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -39,13 +40,14 @@ export function PolicyPage() {
   async function upload() {
     if (!file) return;
     setUploading(true);
+    setUploadProgress(0);
     setError(null);
     try {
       const fd = new FormData();
       fd.append("title", (title || file.name).trim() || file.name);
       if (category.trim()) fd.append("category", category.trim());
       fd.append("file", file, file.name);
-      await apiFetch("/policy/docs", { method: "POST", body: fd });
+      await apiFetchWithProgress("/policy/docs", fd, setUploadProgress);
       setTitle("");
       setCategory("");
       setFile(null);
@@ -55,6 +57,7 @@ export function PolicyPage() {
       setError((e as Error).message);
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -223,9 +226,16 @@ export function PolicyPage() {
               <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题（可选）" style={{ flex: 1, minWidth: 200 }} />
               <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="分类（可选）" style={{ width: 200 }} />
               <input ref={fileInputRef} className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ width: 260 }} />
-              <button className="btn btnPrimary" onClick={upload} disabled={!file || uploading}>
-                {uploading ? "上传中…" : "上传"}
-              </button>
+              <div className="row" style={{ alignItems: "center", gap: 12 }}>
+                {uploadProgress !== null && (
+                  <div className="muted" style={{ fontSize: 14 }}>
+                    上传进度：{uploadProgress}%
+                  </div>
+                )}
+                <button className="btn btnPrimary" onClick={upload} disabled={!file || uploading}>
+                  {uploading ? "上传中…" : "上传"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
