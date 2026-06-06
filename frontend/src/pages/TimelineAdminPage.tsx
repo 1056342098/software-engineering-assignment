@@ -18,7 +18,7 @@ export function TimelineAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || (user.role !== "ADMIN" && user.role !== "LEADER")) {
+    if (!user || (!user.roles.includes("ADMIN") && !user.roles.includes("LEADER"))) {
       navigate("/");
     }
   }, [user, navigate]);
