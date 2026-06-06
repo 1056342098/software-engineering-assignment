@@ -59,7 +59,7 @@ export function PendingPage() {
     try {
       await apiFetch(`/approvals/${selectedId}/${action}`, {
         method: "POST",
-        body: JSON.stringify({ comment: comment.trim() || null }),
+        body: JSON.stringify({ comment: comment.trim() || undefined }),
       });
       setComment("");
       await refresh();

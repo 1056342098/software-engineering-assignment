@@ -403,6 +403,46 @@ public class ApprovalService {
 		opLogService.log(operatorId, "APPROVAL_REVOKE", "approval", approvalId, Map.of("comment", comment));
 	}
 
+	@Transactional
+	public void revokeMyApproval(long applicantId, long approvalId) {
+		Approval approval = approvalRepository.findById(approvalId)
+				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+		if (approval.getApplicant() == null || approval.getApplicant().getId() != applicantId) {
+			throw new ApiException(403, "NOT_YOUR_APPROVAL");
+		}
+		if (!STATUS_PENDING.equals(approval.getStatus())) {
+			throw new ApiException(400, "CANNOT_REVOKE_PROCESSED");
+		}
+
+		ApprovalStep step = stepRepository.findByApproval_IdOrderByStepNoAsc(approvalId).stream()
+				.filter(s -> s.getStepNo() == 2)
+				.findFirst()
+				.orElseThrow(() -> new ApiException(500, "STEP_MISSING"));
+		step.setStatus("REVOKED");
+		step.setActedBy(applicantId);
+		step.setActedAt(Instant.now());
+		step.setComment("学生主动撤回");
+		stepRepository.save(step);
+
+		approval.setStatus(STATUS_REVOKED);
+		approvalRepository.save(approval);
+
+		List<ApprovalAssignee> assignees = assigneeRepository.findByApprovalId(approvalId);
+		for (ApprovalAssignee aa : assignees) {
+			aa.setStatus(STATUS_REVOKED);
+			aa.setActedAt(Instant.now());
+			aa.setComment("学生主动撤回");
+			assigneeRepository.save(aa);
+		}
+
+		if (TYPE_PARTY.equals(approval.getType()) || TYPE_LEAGUE.equals(approval.getType())) {
+			progressService.onDecided(approval, STATUS_REVOKED, Instant.now());
+		}
+
+		appendLog(approval, applicantId, STATUS_REVOKED, "学生主动撤回");
+		opLogService.log(applicantId, "APPROVAL_REVOKE_MY", "approval", approvalId, null);
+	}
+
 	private void appendLog(Approval approval, long operatorId, String action, String comment) {
 		ApprovalLog log = new ApprovalLog();
 		log.setApproval(approval);

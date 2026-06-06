@@ -104,6 +104,11 @@ public class ApprovalProcessProgressService {
 			p.setNextDueAt(stageIndex >= stages.size() - 1 ? null : decidedAt.plus(CYCLE_DAYS, ChronoUnit.DAYS));
 		} else if (ApprovalService.STATUS_REJECTED.equals(decision)) {
 			p.setNextDueAt(decidedAt.plus(CYCLE_DAYS, ChronoUnit.DAYS));
+		} else if (ApprovalService.STATUS_REVOKED.equals(decision)) {
+			// When revoked, just keep the current nextDueAt or reset properly if needed.
+			// The important part is clearing the pendingApprovalId which is done dynamically by the getView method
+			// since it queries for STATUS_PENDING applications.
+			// Let's also ensure the lastResult reflects the revocation.
 		}
 
 		p.setLastApprovalId(approval.getId());

@@ -91,6 +91,21 @@ export function ApprovalsPage() {
     }
   }
 
+  async function revokeMyApproval(approvalId: number) {
+    if (!window.confirm("确定要撤回这条申请吗？撤回后将需要重新提交。")) return;
+    setError(null);
+    try {
+      await apiFetch(`/approvals/${approvalId}/my-revoke`, { method: "POST" });
+      await refresh();
+      if (selectedId === approvalId) {
+        const next = await apiFetch<ApprovalDetailDto>(`/approvals/${approvalId}`, { method: "GET" });
+        setDetail(next);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   return (
     <div className="grid">
       <div className="pageTitle">
@@ -252,6 +267,14 @@ export function ApprovalsPage() {
                     </div>
                   )}
                 </div>
+
+                {detail.status === "PENDING" && (
+                  <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                    <button className="btn btnDanger" onClick={() => void revokeMyApproval(detail.id)}>
+                      撤回申请
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
