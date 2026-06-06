@@ -39,6 +39,17 @@ export function PolicyPage() {
 
   async function upload() {
     if (!file) return;
+    const allowedExtensions = [".pdf", ".txt", ".doc", ".docx"];
+    const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+    if (!allowedExtensions.includes(fileExt)) {
+      setError("政策库仅支持上传 pdf, txt, word (.doc, .docx) 格式的文件。");
+      return;
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      setError("文件大小不能超过 30MB。");
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
     setError(null);
@@ -225,7 +236,7 @@ export function PolicyPage() {
             <div className="row" style={{ alignItems: "stretch" }}>
               <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题（可选）" style={{ flex: 1, minWidth: 200 }} />
               <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="分类（可选）" style={{ width: 200 }} />
-              <input ref={fileInputRef} className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ width: 260 }} />
+              <input ref={fileInputRef} className="input" type="file" accept=".pdf,.txt,.doc,.docx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ width: 260 }} />
               <div className="row" style={{ alignItems: "center", gap: 12 }}>
                 {uploadProgress !== null && (
                   <div className="muted" style={{ fontSize: 14 }}>

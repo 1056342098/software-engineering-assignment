@@ -465,10 +465,16 @@ public class ApprovalService {
 			if (f == null || f.isEmpty()) {
 				continue;
 			}
+			String originalName = f.getOriginalFilename() == null ? "attachment" : f.getOriginalFilename();
+			String lowerName = originalName.toLowerCase(Locale.ROOT);
+			if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".ppt") && !lowerName.endsWith(".pptx")
+					&& !lowerName.endsWith(".doc") && !lowerName.endsWith(".docx") && !lowerName.endsWith(".txt")
+					&& !lowerName.endsWith(".png") && !lowerName.endsWith(".jpg") && !lowerName.endsWith(".jpeg")) {
+				throw new ApiException(400, "UNSUPPORTED_FILE_TYPE");
+			}
 			if (f.getSize() > 30L * 1024 * 1024) {
 				throw new ApiException(400, "FILE_TOO_LARGE");
 			}
-			String originalName = f.getOriginalFilename() == null ? "attachment" : f.getOriginalFilename();
 			originalName = originalName.replace("\\", "/");
 			int lastSlash = originalName.lastIndexOf('/');
 			if (lastSlash >= 0) {

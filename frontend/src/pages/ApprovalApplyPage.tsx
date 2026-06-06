@@ -71,6 +71,18 @@ export function ApprovalApplyPage() {
       setError("请至少选择一位审批老师。");
       return;
     }
+    const allowedExts = [".pdf", ".ppt", ".pptx", ".doc", ".docx", ".txt", ".png", ".jpg", ".jpeg"];
+    for (const f of files) {
+      const ext = f.name.toLowerCase().substring(f.name.lastIndexOf("."));
+      if (!allowedExts.includes(ext)) {
+        setError(`不支持的文件类型: ${f.name}。仅支持 pdf, ppt, doc, txt, 图片等。`);
+        return;
+      }
+      if (f.size > 30 * 1024 * 1024) {
+        setError(`文件大小不能超过 30MB: ${f.name}`);
+        return;
+      }
+    }
     setSubmitting(true);
     setUploadProgress(0);
     try {
@@ -142,6 +154,7 @@ export function ApprovalApplyPage() {
                   className="input"
                   type="file"
                   multiple
+                  accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.png,.jpg,.jpeg"
                   onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
                 />
                 {files.length ? (

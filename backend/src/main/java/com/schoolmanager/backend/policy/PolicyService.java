@@ -75,6 +75,11 @@ public class PolicyService {
         if (file == null || file.isEmpty()) {
             throw new ApiException(400, "FILE_REQUIRED");
         }
+        String originalName = file.getOriginalFilename() == null ? "policy" : file.getOriginalFilename();
+        String lowerName = originalName.toLowerCase(Locale.ROOT);
+        if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".txt") && !lowerName.endsWith(".doc") && !lowerName.endsWith(".docx")) {
+            throw new ApiException(400, "UNSUPPORTED_FILE_TYPE");
+        }
         if (file.getSize() > 30L * 1024 * 1024) {
             throw new ApiException(400, "FILE_TOO_LARGE");
         }
@@ -84,7 +89,6 @@ public class PolicyService {
         Path path = null;
         try {
             Files.createDirectories(policyDir);
-            String originalName = file.getOriginalFilename() == null ? "policy" : file.getOriginalFilename();
             originalName = originalName.replace("\\", "/");
             int lastSlash = originalName.lastIndexOf('/');
             if (lastSlash >= 0) {
