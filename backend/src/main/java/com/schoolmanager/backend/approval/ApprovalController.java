@@ -144,21 +144,24 @@ public class ApprovalController {
 	@PostMapping("/{approvalId}/approve")
 	@PreAuthorize("hasAnyRole('TEACHER','LEADER')")
 	public ApiResponse<Void> approve(@PathVariable long approvalId, @RequestBody(required = false) Map<String, Object> body) {
-		approvalService.approve(currentUser.id(), approvalId, body == null ? null : str(body.get("comment")));
+		String comment = (body != null && body.containsKey("comment")) ? str(body.get("comment")) : null;
+		approvalService.approve(currentUser.id(), approvalId, comment);
 		return ApiResponse.ok(null);
 	}
 
 	@PostMapping("/{approvalId}/reject")
 	@PreAuthorize("hasAnyRole('TEACHER','LEADER')")
 	public ApiResponse<Void> reject(@PathVariable long approvalId, @RequestBody(required = false) Map<String, Object> body) {
-		approvalService.reject(currentUser.id(), approvalId, body == null ? null : str(body.get("comment")));
+		String comment = (body != null && body.containsKey("comment")) ? str(body.get("comment")) : null;
+		approvalService.reject(currentUser.id(), approvalId, comment);
 		return ApiResponse.ok(null);
 	}
 
 	@PostMapping("/{approvalId}/revoke")
 	@PreAuthorize("hasAnyRole('TEACHER','LEADER')")
 	public ApiResponse<Void> revoke(@PathVariable long approvalId, @RequestBody(required = false) Map<String, Object> body) {
-		approvalService.revoke(currentUser.id(), approvalId, body == null ? null : str(body.get("comment")));
+		String comment = (body != null && body.containsKey("comment")) ? str(body.get("comment")) : null;
+		approvalService.revoke(currentUser.id(), approvalId, comment);
 		return ApiResponse.ok(null);
 	}
 
