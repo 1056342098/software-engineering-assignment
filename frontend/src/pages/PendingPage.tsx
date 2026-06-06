@@ -75,6 +75,11 @@ export function PendingPage() {
       await refresh();
       const next = await apiFetch<ApprovalDetailDto>(`/approvals/${selectedId}`, { method: "GET" });
       setDetail(next);
+      if ((next.type === "PARTY_APPLY" || next.type === "LEAGUE_APPLY") && next.applicantId) {
+        apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${next.applicantId}`, { method: "GET" })
+          .then(setStudentProgress)
+          .catch(() => {});
+      }
     } catch (e) {
       setError((e as Error).message);
     }
