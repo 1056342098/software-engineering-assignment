@@ -40,10 +40,23 @@ export async function apiFetch<T>(
     const text = await resp.text();
     if (!text) {
       json = { code: 0, message: "OK", data: null };
+    } else if (text.trim().startsWith("<")) {
+      let errorMsg = `Server Error (${resp.status}): Please try again later.`;
+      if (resp.status === 502 || resp.status === 504) {
+        errorMsg = "Backend server is starting or unavailable, please wait a moment and try again.";
+      } else if (resp.status === 404) {
+        errorMsg = "API endpoint not found. Please check your configuration.";
+      } else if (resp.status === 405) {
+        errorMsg = "Method not allowed. Please check your Nginx configuration.";
+      }
+      throw new Error(errorMsg);
     } else {
       json = JSON.parse(text);
     }
   } catch (e) {
+    if (e instanceof Error && (e.message.includes("Server Error") || e.message.includes("Backend server") || e.message.includes("API endpoint") || e.message.includes("Method not allowed"))) {
+      throw e;
+    }
     throw new Error(`Invalid JSON response: ${e}`);
   }
 
