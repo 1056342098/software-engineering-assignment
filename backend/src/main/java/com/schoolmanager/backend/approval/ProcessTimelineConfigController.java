@@ -23,7 +23,7 @@ public class ProcessTimelineConfigController {
     @GetMapping("/{type}")
     public ApiResponse<List<ProcessTimelineNode>> getConfig(@PathVariable String type) {
         List<ProcessTimelineNode> nodes = timelineNodeRepository.findByApprovalTypeOrderByStageIndexAsc(type.toUpperCase());
-        return ApiResponse.success(nodes);
+        return ApiResponse.ok(nodes);
     }
 
     @PutMapping("/{type}")
@@ -48,6 +48,6 @@ public class ProcessTimelineConfigController {
             timelineNodeRepository.save(toSave);
         }
         
-        return ApiResponse.success(null);
+        return ApiResponse.ok(null);
     }
 }

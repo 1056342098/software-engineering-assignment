@@ -36,7 +36,7 @@ public class SelfTestController {
                 throw new RuntimeException("Failed to parse options JSON", e);
             }
         }).collect(Collectors.toList());
-        return ApiResponse.success(dtos);
+        return ApiResponse.ok(dtos);
     }
 
     public record QuestionDto(Long id, String content, List<String> options, String correctAnswer) {}
