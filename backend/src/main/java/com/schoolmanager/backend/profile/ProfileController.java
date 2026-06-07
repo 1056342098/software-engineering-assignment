@@ -55,7 +55,7 @@ public class ProfileController {
         long uid = currentUser.id();
         boolean isAdmin = currentUser.hasRole("LEADER") || currentUser.hasRole("TEACHER");
         if (!(isAdmin || uid == studentId)) {
-            throw new ApiException(403, "FORBIDDEN");
+            throw new ApiException(403, "没有权限修改敏感信息");
         }
         profileService.upsertSensitive(uid, studentId, body);
         return ApiResponse.ok(null);

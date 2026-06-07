@@ -123,7 +123,7 @@ public class ApprovalController {
 	public ApiResponse<ApprovalDetailDto> detail(@PathVariable long approvalId) {
 		ensureReadable(approvalId);
 		Approval approval = approvalRepository.findByIdWithApplicant(approvalId)
-				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该审批"));
 		List<ApprovalAssignee> assignees = approvalService.listAssignees(approvalId);
 		List<ApprovalAttachment> atts = approvalService.listAttachments(approvalId);
 		return ApiResponse.ok(ApprovalDetailDto.from(approval, assignees, atts));
@@ -133,9 +133,9 @@ public class ApprovalController {
 	public ResponseEntity<Resource> downloadAttachment(@PathVariable long approvalId, @PathVariable long attachmentId) {
 		ensureReadable(approvalId);
 		ApprovalAttachment att = attachmentRepository.findById(attachmentId)
-				.orElseThrow(() -> new ApiException(404, "ATTACHMENT_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该附件"));
 		if (att.getApproval() == null || att.getApproval().getId() == null || att.getApproval().getId() != approvalId) {
-			throw new ApiException(404, "ATTACHMENT_NOT_FOUND");
+			throw new ApiException(404, "未找到该附件");
 		}
 		Resource file = approvalService.getAttachmentFile(approvalId, attachmentId);
 		return ResponseEntity.ok()
@@ -208,7 +208,7 @@ public class ApprovalController {
 
 	private void ensureReadable(long approvalId) {
 		Approval approval = approvalRepository.findByIdWithApplicant(approvalId)
-				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该审批"));
 		long uid = currentUser.id();
 		if (approval.getApplicant() != null && approval.getApplicant().getId() != null
 				&& approval.getApplicant().getId() == uid) {
@@ -217,7 +217,7 @@ public class ApprovalController {
 		boolean isAssignee = assigneeRepository.findOne(approvalId, uid).isPresent();
 		if (isAssignee)
 			return;
-		throw new ApiException(403, "FORBIDDEN");
+		throw new ApiException(403, "没有权限查看该审批");
 	}
 
 	private static String str(Object v) {

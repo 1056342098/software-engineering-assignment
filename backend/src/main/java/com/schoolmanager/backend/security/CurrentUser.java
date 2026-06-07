@@ -12,7 +12,7 @@ public class CurrentUser {
 	public long id() {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		if (auth == null || !(auth.getPrincipal() instanceof AuthUser au)) {
-			throw new ApiException(401, "UNAUTHORIZED");
+			throw new ApiException(401, "未登录或登录已过期");
 		}
 		return au.getUser().getId();
 	}
@@ -20,7 +20,7 @@ public class CurrentUser {
 	public Set<String> roleCodes() {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		if (auth == null || !(auth.getPrincipal() instanceof AuthUser au)) {
-			throw new ApiException(401, "UNAUTHORIZED");
+			throw new ApiException(401, "未登录或登录已过期");
 		}
 		return au.getUser().getRoles().stream().map(r -> r.getCode()).collect(java.util.stream.Collectors.toSet());
 	}

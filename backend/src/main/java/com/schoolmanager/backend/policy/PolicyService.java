@@ -60,12 +60,12 @@ public class PolicyService {
     }
 
     public Resource getFile(long docId) {
-        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "DOC_NOT_FOUND"));
+        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "未找到该政策文件"));
         if (!"ACTIVE".equalsIgnoreCase(doc.getStatus())) {
-            throw new ApiException(400, "DOC_REVOKED");
+            throw new ApiException(400, "该政策文件已撤回");
         }
         if (doc.getFilePath() == null || doc.getFilePath().isBlank()) {
-            throw new ApiException(404, "FILE_NOT_FOUND");
+            throw new ApiException(404, "未找到文件");
         }
         return new FileSystemResource(doc.getFilePath());
     }
@@ -73,18 +73,18 @@ public class PolicyService {
     @Transactional
     public PolicyDoc upload(long uploaderId, String title, String category, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new ApiException(400, "FILE_REQUIRED");
+            throw new ApiException(400, "请上传文件");
         }
         String originalName = file.getOriginalFilename() == null ? "policy" : file.getOriginalFilename();
         String lowerName = originalName.toLowerCase(Locale.ROOT);
         if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".txt") && !lowerName.endsWith(".doc") && !lowerName.endsWith(".docx")) {
-            throw new ApiException(400, "UNSUPPORTED_FILE_TYPE");
+            throw new ApiException(400, "不支持的文件类型");
         }
         if (file.getSize() > 30L * 1024 * 1024) {
-            throw new ApiException(400, "FILE_TOO_LARGE");
+            throw new ApiException(400, "文件过大");
         }
         SysUser uploader = userRepository.findById(uploaderId)
-                .orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+                .orElseThrow(() -> new ApiException(404, "未找到用户"));
 
         Path path = null;
         try {
@@ -117,7 +117,7 @@ public class PolicyService {
                 extracted = "";
             }
             if (!allowEmpty && (extracted == null || extracted.isBlank())) {
-                throw new ApiException(400, "EMPTY_TEXT");
+                throw new ApiException(400, "文件内容为空或无法提取文本");
             }
 
             PolicyDoc doc = new PolicyDoc();
@@ -164,23 +164,23 @@ public class PolicyService {
                 } catch (Exception ignored) {
                 }
             }
-            throw new ApiException(500, "UPLOAD_FAILED");
+            throw new ApiException(500, "文件上传失败");
         }
     }
 
     @Transactional
     public PolicyDoc updateMeta(long operatorId, long docId, String title, String category) {
-        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "DOC_NOT_FOUND"));
+        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "未找到该政策文件"));
         if (doc.getUploader() == null || doc.getUploader().getId() == null || doc.getUploader().getId() != operatorId) {
-            throw new ApiException(403, "DOC_NOT_OWNED");
+            throw new ApiException(403, "只能修改自己上传的政策文件");
         }
         if (!"ACTIVE".equalsIgnoreCase(doc.getStatus())) {
-            throw new ApiException(400, "DOC_REVOKED");
+            throw new ApiException(400, "该政策文件已撤回");
         }
         if (title != null) {
             String t = title.strip();
             if (t.isBlank()) {
-                throw new ApiException(400, "TITLE_REQUIRED");
+                throw new ApiException(400, "标题不能为空");
             }
             doc.setTitle(t);
         }
@@ -198,9 +198,9 @@ public class PolicyService {
 
     @Transactional
     public void revoke(long operatorId, long docId) {
-        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "DOC_NOT_FOUND"));
+        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "未找到该政策文件"));
         if (doc.getUploader() == null || doc.getUploader().getId() == null || doc.getUploader().getId() != operatorId) {
-            throw new ApiException(403, "DOC_NOT_OWNED");
+            throw new ApiException(403, "只能撤回自己上传的政策文件");
         }
         if (!"ACTIVE".equalsIgnoreCase(doc.getStatus())) {
             return;
@@ -244,7 +244,7 @@ public class PolicyService {
         if (lower.endsWith(".txt")) {
             return Files.readString(path, StandardCharsets.UTF_8);
         }
-        throw new ApiException(400, "UNSUPPORTED_FILE");
+        throw new ApiException(400, "不支持的文件类型");
     }
 
     private static List<String> chunkText(String text, int maxLen) {

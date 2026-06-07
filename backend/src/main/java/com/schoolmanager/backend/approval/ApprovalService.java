@@ -118,9 +118,9 @@ public class ApprovalService {
 
 	public Resource getAttachmentFile(long approvalId, long attachmentId) {
 		ApprovalAttachment att = attachmentRepository.findById(attachmentId)
-				.orElseThrow(() -> new ApiException(404, "ATTACHMENT_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该附件"));
 		if (att.getApproval() == null || att.getApproval().getId() == null || att.getApproval().getId() != approvalId) {
-			throw new ApiException(404, "ATTACHMENT_NOT_FOUND");
+			throw new ApiException(404, "未找到该附件");
 		}
 		return new FileSystemResource(att.getFilePath());
 	}
@@ -142,12 +142,12 @@ public class ApprovalService {
 	@Transactional
 	public Approval create(long applicantId, String type, long approverId, Map<String, Object> form) {
 		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type)) {
-			throw new ApiException(400, "INVALID_TYPE");
+			throw new ApiException(400, "无效的申请类型");
 		}
 		SysUser applicant = userRepository.findById(applicantId)
-				.orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到申请人信息"));
 		SysUser approver = userRepository.findById(approverId)
-				.orElseThrow(() -> new ApiException(404, "APPROVER_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到审批人信息"));
 
 		Approval approval = new Approval();
 		approval.setApplicant(applicant);
@@ -161,7 +161,7 @@ public class ApprovalService {
 		try {
 			approval.setFormJson(objectMapper.writeValueAsString(form));
 		} catch (Exception e) {
-			throw new ApiException(400, "INVALID_FORM");
+			throw new ApiException(400, "表单数据格式无效");
 		}
 		approval = approvalRepository.save(approval);
 
@@ -203,30 +203,30 @@ public class ApprovalService {
 			List<Long> approverIds,
 			List<MultipartFile> files) {
 		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type)) {
-			throw new ApiException(400, "INVALID_TYPE");
+			throw new ApiException(400, "无效的申请类型");
 		}
 		String sub = subject == null ? "" : subject.strip();
 		if (sub.isBlank()) {
-			throw new ApiException(400, "SUBJECT_REQUIRED");
+			throw new ApiException(400, "必须填写主题");
 		}
 		if (approverIds == null || approverIds.isEmpty()) {
-			throw new ApiException(400, "APPROVER_REQUIRED");
+			throw new ApiException(400, "必须选择至少一位审批人");
 		}
 		List<Long> uniqueApproverIds = approverIds.stream().distinct().toList();
 
 		SysUser applicant = userRepository.findById(applicantId)
-				.orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到申请人信息"));
 
 		List<SysUser> approvers = new ArrayList<>();
 		for (Long id : uniqueApproverIds) {
 			if (id == null) {
 				continue;
 			}
-			SysUser u = userRepository.findById(id).orElseThrow(() -> new ApiException(404, "APPROVER_NOT_FOUND"));
+			SysUser u = userRepository.findById(id).orElseThrow(() -> new ApiException(404, "未找到审批人信息"));
 			approvers.add(u);
 		}
 		if (approvers.isEmpty()) {
-			throw new ApiException(400, "APPROVER_REQUIRED");
+			throw new ApiException(400, "必须选择至少一位审批人");
 		}
 
 		Instant now = Instant.now();
@@ -251,7 +251,7 @@ public class ApprovalService {
 			formMap.put("approverIds", uniqueApproverIds);
 			approval.setFormJson(objectMapper.writeValueAsString(formMap));
 		} catch (Exception e) {
-			throw new ApiException(400, "INVALID_FORM");
+			throw new ApiException(400, "表单数据格式无效");
 		}
 		approval = approvalRepository.save(approval);
 		if (TYPE_PARTY.equals(type) || TYPE_LEAGUE.equals(type)) {
@@ -294,20 +294,20 @@ public class ApprovalService {
 	@Transactional
 	public void approve(long operatorId, long approvalId, String comment) {
 		Approval approval = approvalRepository.findById(approvalId)
-				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该审批"));
 		if (!STATUS_PENDING.equals(approval.getStatus())) {
-			throw new ApiException(400, "NOT_PENDING");
+			throw new ApiException(400, "该审批已处理");
 		}
 		Instant now = Instant.now();
 		ApprovalAssignee aa = assigneeRepository.findOne(approvalId, operatorId)
-				.orElseThrow(() -> new ApiException(403, "NOT_ASSIGNED_APPROVER"));
+				.orElseThrow(() -> new ApiException(403, "您不是该审批的指定审批人"));
 		if (!STATUS_PENDING.equals(aa.getStatus())) {
-			throw new ApiException(400, "ALREADY_ACTED");
+			throw new ApiException(400, "您已处理过该审批");
 		}
 		ApprovalStep step = stepRepository.findByApproval_IdOrderByStepNoAsc(approvalId).stream()
 				.filter(s -> s.getStepNo() == 2)
 				.findFirst()
-				.orElseThrow(() -> new ApiException(500, "STEP_MISSING"));
+				.orElseThrow(() -> new ApiException(500, "审批步骤缺失"));
 		step.setStatus("DONE");
 		step.setActedBy(operatorId);
 		step.setActedAt(now);
@@ -331,20 +331,20 @@ public class ApprovalService {
 	@Transactional
 	public void reject(long operatorId, long approvalId, String comment) {
 		Approval approval = approvalRepository.findById(approvalId)
-				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该审批"));
 		if (!STATUS_PENDING.equals(approval.getStatus())) {
-			throw new ApiException(400, "NOT_PENDING");
+			throw new ApiException(400, "该审批已处理");
 		}
 		Instant now = Instant.now();
 		ApprovalAssignee aa = assigneeRepository.findOne(approvalId, operatorId)
-				.orElseThrow(() -> new ApiException(403, "NOT_ASSIGNED_APPROVER"));
+				.orElseThrow(() -> new ApiException(403, "您不是该审批的指定审批人"));
 		if (!STATUS_PENDING.equals(aa.getStatus())) {
-			throw new ApiException(400, "ALREADY_ACTED");
+			throw new ApiException(400, "您已处理过该审批");
 		}
 		ApprovalStep step = stepRepository.findByApproval_IdOrderByStepNoAsc(approvalId).stream()
 				.filter(s -> s.getStepNo() == 2)
 				.findFirst()
-				.orElseThrow(() -> new ApiException(500, "STEP_MISSING"));
+				.orElseThrow(() -> new ApiException(500, "审批步骤缺失"));
 		step.setStatus("REJECTED");
 		step.setActedBy(operatorId);
 		step.setActedAt(now);
@@ -367,20 +367,20 @@ public class ApprovalService {
 	@Transactional
 	public void revoke(long operatorId, long approvalId, String comment) {
 		Approval approval = approvalRepository.findById(approvalId)
-				.orElseThrow(() -> new ApiException(404, "APPROVAL_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该审批"));
 		if (!(STATUS_APPROVED.equals(approval.getStatus()) || STATUS_REJECTED.equals(approval.getStatus()))) {
-			throw new ApiException(400, "NOT_REVIEWED");
+			throw new ApiException(400, "该审批尚未被处理，无法撤回");
 		}
 		assigneeRepository.findOne(approvalId, operatorId)
-				.orElseThrow(() -> new ApiException(403, "NOT_ASSIGNED_APPROVER"));
+				.orElseThrow(() -> new ApiException(403, "您不是该审批的指定审批人"));
 		if (approval.getWindowExpireAt() != null && approval.getWindowExpireAt().isBefore(Instant.now())) {
-			throw new ApiException(400, "REVOKE_WINDOW_EXPIRED");
+			throw new ApiException(400, "撤回时间窗口已过期");
 		}
 
 		ApprovalStep step = stepRepository.findByApproval_IdOrderByStepNoAsc(approvalId).stream()
 				.filter(s -> s.getStepNo() == 2)
 				.findFirst()
-				.orElseThrow(() -> new ApiException(500, "STEP_MISSING"));
+				.orElseThrow(() -> new ApiException(500, "审批步骤缺失"));
 		step.setStatus("PENDING");
 		step.setActedBy(null);
 		step.setActedAt(null);

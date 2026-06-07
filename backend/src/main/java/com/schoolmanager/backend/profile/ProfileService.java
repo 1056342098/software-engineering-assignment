@@ -53,7 +53,7 @@ public class ProfileService {
 
 	public Map<String, Object> getProfile(long requesterId, boolean requesterIsAdmin, long studentId) {
 		Student student = studentRepository.findById(studentId)
-				.orElseThrow(() -> new ApiException(404, "STUDENT_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该学生"));
 
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("kind", "STUDENT");
@@ -110,7 +110,7 @@ public class ProfileService {
 	}
 
 	public Map<String, Object> getUserProfile(long requesterId, boolean requesterIsAdmin, long userId) {
-		SysUser u = userRepository.findById(userId).orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+		SysUser u = userRepository.findById(userId).orElseThrow(() -> new ApiException(404, "未找到用户"));
 
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("kind", "USER");
@@ -141,13 +141,13 @@ public class ProfileService {
 
 	@Transactional
 	public void upsertPublicProfile(long userId, Map<String, Object> publicPart) {
-		SysUser user = userRepository.findById(userId).orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+		SysUser user = userRepository.findById(userId).orElseThrow(() -> new ApiException(404, "未找到用户"));
 		UserProfile up = userProfileRepository.findByUser_Id(userId).orElseGet(UserProfile::new);
 		up.setUser(user);
 		try {
 			up.setPublicJson(objectMapper.writeValueAsString(publicPart));
 		} catch (Exception e) {
-			throw new ApiException(400, "INVALID_PUBLIC_JSON");
+			throw new ApiException(400, "公开信息格式无效");
 		}
 		userProfileRepository.save(up);
 		opLogService.log(userId, "PROFILE_PUBLIC_UPSERT", "user_profile", up.getId(), null);
@@ -156,7 +156,7 @@ public class ProfileService {
 	@Transactional
 	public void upsertSensitive(long operatorId, long studentId, Map<String, Object> sensitivePart) {
 		Student student = studentRepository.findById(studentId)
-				.orElseThrow(() -> new ApiException(404, "STUDENT_NOT_FOUND"));
+				.orElseThrow(() -> new ApiException(404, "未找到该学生"));
 		StudentSensitive ss = sensitiveRepository.findByStudent_Id(studentId).orElseGet(StudentSensitive::new);
 		ss.setStudent(student);
 		ss.setUpdatedBy(operatorId);

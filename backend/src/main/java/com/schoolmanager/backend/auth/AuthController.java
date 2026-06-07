@@ -53,10 +53,10 @@ public class AuthController {
     public ApiResponse<LoginResponse.UserInfo> me() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof AuthUser au)) {
-            throw new ApiException(401, "UNAUTHORIZED");
+            throw new ApiException(401, "未登录或登录已过期");
         }
         SysUser u = userRepository.findById(au.getUser().getId())
-                .orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+                .orElseThrow(() -> new ApiException(404, "未找到用户信息"));
         Set<String> roles = u.getRoles().stream().map(SysRole::getCode).collect(java.util.stream.Collectors.toSet());
         return ApiResponse.ok(new LoginResponse.UserInfo(u.getId(), u.getLoginName(), u.getRealName(), roles));
     }

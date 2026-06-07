@@ -77,14 +77,14 @@ public class ApprovalProcessProgressService {
 
 		ApprovalProcessProgress p = ensureProgress(userId, approvalType, now);
 		if (isFinalStage(p, stages)) {
-			throw new ApiException(400, "ALREADY_FINAL_STAGE");
+			throw new ApiException(400, "已处于最后阶段，无需再次提交");
 		}
 		Instant actualNextDueAt = calculateNextDueAt(p, stages);
 		if (actualNextDueAt != null && now.isBefore(actualNextDueAt)) {
-			throw new ApiException(400, "ASSESSMENT_NOT_DUE");
+			throw new ApiException(400, "未到下一阶段的提交时间，提交失败");
 		}
 		if (approvalRepository.existsByApplicant_IdAndTypeAndStatus(userId, approvalType, ApprovalService.STATUS_PENDING)) {
-			throw new ApiException(400, "ASSESSMENT_PENDING");
+			throw new ApiException(400, "重复提交，提交失败");
 		}
 		return new SubmissionStage(p.getStageIndex(), p.getStageCode());
 	}
@@ -140,7 +140,7 @@ public class ApprovalProcessProgressService {
 	public ProgressView getView(long userId, String approvalType) {
 		List<StageDef> stages = stagesForType(approvalType);
 		if (stages.isEmpty()) {
-			throw new ApiException(400, "INVALID_TYPE");
+			throw new ApiException(400, "无效的申请类型");
 		}
 		ApprovalProcessProgress p = progressRepository.findByUserIdAndApprovalType(userId, approvalType)
 				.orElseGet(() -> {
@@ -184,7 +184,7 @@ public class ApprovalProcessProgressService {
 	private ApprovalProcessProgress ensureProgress(long userId, String approvalType, Instant now) {
 		List<StageDef> stages = stagesForType(approvalType);
 		if (stages.isEmpty()) {
-			throw new ApiException(400, "INVALID_TYPE");
+			throw new ApiException(400, "无效的申请类型");
 		}
 		Optional<ApprovalProcessProgress> op = progressRepository.findByUserIdAndApprovalType(userId, approvalType);
 		if (op.isPresent()) {
