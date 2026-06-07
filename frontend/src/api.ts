@@ -41,27 +41,27 @@ export async function apiFetch<T>(
     if (!text) {
       json = { code: 0, message: "OK", data: null };
     } else if (text.trim().startsWith("<")) {
-      let errorMsg = `Server Error (${resp.status}): Please try again later.`;
+      let errorMsg = `服务器错误 (${resp.status}): 请稍后重试。`;
       if (resp.status === 502 || resp.status === 504) {
-        errorMsg = "Backend server is starting or unavailable, please wait a moment and try again.";
+        errorMsg = "后端服务正在启动或不可用，请稍候重试。";
       } else if (resp.status === 404) {
-        errorMsg = "API endpoint not found. Please check your configuration.";
+        errorMsg = "未找到API接口，请检查配置。";
       } else if (resp.status === 405) {
-        errorMsg = "Method not allowed. Please check your Nginx configuration.";
+        errorMsg = "请求方法不允许，请检查Nginx配置。";
       }
       throw new Error(errorMsg);
     } else {
       json = JSON.parse(text);
     }
   } catch (e) {
-    if (e instanceof Error && (e.message.includes("Server Error") || e.message.includes("Backend server") || e.message.includes("API endpoint") || e.message.includes("Method not allowed"))) {
+    if (e instanceof Error && (e.message.includes("服务器错误") || e.message.includes("后端服务") || e.message.includes("API接口") || e.message.includes("请求方法"))) {
       throw e;
     }
-    throw new Error(`Invalid JSON response: ${e}`);
+    throw new Error(`无效的JSON响应: ${e}`);
   }
 
   if (!resp.ok || json.code !== 0) {
-    throw new Error(json.message || `HTTP_${resp.status}`);
+    throw new Error(json.message || `请求失败 (HTTP ${resp.status})`);
   }
   return json.data;
 }
@@ -75,7 +75,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 
   const resp = await fetch(url, { method: "GET", headers });
   if (!resp.ok) {
-    throw new Error(`HTTP_${resp.status}`);
+    throw new Error(`请求失败 (HTTP ${resp.status})`);
   }
   return await resp.blob();
 }
@@ -108,14 +108,14 @@ export function apiFetchWithProgress<T>(
         if (xhr.status >= 200 && xhr.status < 300 && json.code === 0) {
           resolve(json.data);
         } else {
-          reject(new Error(json.message || `HTTP_${xhr.status}`));
+          reject(new Error(json.message || `请求失败 (HTTP ${xhr.status})`));
         }
       } catch (e) {
-        reject(new Error(`HTTP_${xhr.status}`));
+        reject(new Error(`请求失败 (HTTP ${xhr.status})`));
       }
     };
 
-    xhr.onerror = () => reject(new Error("Network Error"));
+    xhr.onerror = () => reject(new Error("网络错误 (Network Error)"));
     xhr.send(fd);
   });
 }

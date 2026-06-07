@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api";
@@ -29,14 +30,12 @@ export function StudentDetailPage() {
   const studentId = Number(params.studentId);
   const [data, setData] = useState<ProfileResp | null>(null);
   const [studentProgress, setStudentProgress] = useState<{ serverNow: string; items: any[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     if (!studentId) return;
-    setError(null);
-    void apiFetch<ProfileResp>(`/profile/students/${studentId}`, { method: "GET" })
+        void apiFetch<ProfileResp>(`/profile/students/${studentId}`, { method: "GET" })
       .then(setData)
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
       
     void apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${studentId}`, { method: "GET" })
       .then(setStudentProgress)
@@ -61,7 +60,6 @@ export function StudentDetailPage() {
         </span>
       </div>
 
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
       {!data ? <div className="muted">加载中…</div> : null}
 
       {data ? (

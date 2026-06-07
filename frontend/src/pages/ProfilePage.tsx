@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { apiFetch } from "../api";
@@ -28,17 +29,15 @@ type CreditModule = { name: string; required: number; earned: number };
 
 export function ProfilePage() {
   const [data, setData] = useState<ProfileResp | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+    const [saving, setSaving] = useState(false);
   const [creditModules, setCreditModules] = useState<CreditModule[]>([]);
   const [creditEditOpen, setCreditEditOpen] = useState(false);
   const [creditDraft, setCreditDraft] = useState<CreditModule[]>([]);
 
   useEffect(() => {
-    setError(null);
-    void apiFetch<ProfileResp>("/profile/me", { method: "GET" })
+        void apiFetch<ProfileResp>("/profile/me", { method: "GET" })
       .then(setData)
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
   }, []);
 
   useEffect(() => {
@@ -61,8 +60,7 @@ export function ProfilePage() {
 
   async function saveCredits(modules: CreditModule[]) {
     if (!data) return;
-    setError(null);
-    setSaving(true);
+        setSaving(true);
     try {
       const nextPublic = { ...(data.public ?? {}) };
       const cleaned = modules
@@ -74,7 +72,7 @@ export function ProfilePage() {
       setData(refreshed);
       setCreditEditOpen(false);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -88,8 +86,6 @@ export function ProfilePage() {
           敏感信息按角色权限展示
         </span>
       </div>
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       {!data ? <div className="muted">加载中…</div> : null}
 

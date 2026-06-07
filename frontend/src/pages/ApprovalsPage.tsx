@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, apiFetchBlob } from "../api";
@@ -47,8 +48,7 @@ export function ApprovalsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<ApprovalDetailDto | null>(null);
   const [progress, setProgress] = useState<ProgressResp | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  
   const selected = useMemo(() => approvals.find((a) => a.id === selectedId) ?? null, [approvals, selectedId]);
 
   async function refresh() {
@@ -61,22 +61,19 @@ export function ApprovalsPage() {
   }
 
   useEffect(() => {
-    setError(null);
-    void refresh().catch((e) => setError((e as Error).message));
+        void refresh().catch((e) => showError((e as Error).message));
   }, []);
 
   useEffect(() => {
     if (!selectedId) return;
-    setError(null);
-    setDetail(null);
+        setDetail(null);
     void apiFetch<ApprovalDetailDto>(`/approvals/${selectedId}`, { method: "GET" })
       .then(setDetail)
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
   }, [selectedId]);
 
   async function downloadAttachment(approvalId: number, attachmentId: number, fileName: string) {
-    setError(null);
-    try {
+        try {
       const blob = await apiFetchBlob(`/approvals/${approvalId}/attachments/${attachmentId}/download`);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -87,14 +84,13 @@ export function ApprovalsPage() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
   async function revokeMyApproval(approvalId: number) {
     if (!window.confirm("确定要撤回这条申请吗？撤回后将需要重新提交。")) return;
-    setError(null);
-    try {
+        try {
       await apiFetch(`/approvals/${approvalId}/my-revoke`, { method: "POST" });
       await refresh();
       if (selectedId === approvalId) {
@@ -102,7 +98,7 @@ export function ApprovalsPage() {
         setDetail(next);
       }
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -119,8 +115,6 @@ export function ApprovalsPage() {
           </button>
         </div>
       </div>
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       {progress ? (
         <div className="twoCol" style={{ gridTemplateColumns: "1fr 1fr" }}>

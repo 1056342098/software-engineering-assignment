@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch, apiFetchWithProgress } from "../api";
@@ -16,8 +17,7 @@ export function ApprovalApplyPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     const t = searchParams.get("type");
     if (t === "PARTY_APPLY" || t === "LEAGUE_APPLY" || t === "OTHER") {
@@ -26,8 +26,7 @@ export function ApprovalApplyPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    setError(null);
-    void Promise.all([
+        void Promise.all([
       apiFetch<UserDto[]>("/users?role=TEACHER", { method: "GET" }),
       apiFetch<UserDto[]>("/users?role=LEADER", { method: "GET" }),
     ])
@@ -37,7 +36,7 @@ export function ApprovalApplyPage() {
         const first = [...t, ...l][0]?.id;
         if (first && selected.length === 0) setSelected([first]);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
   }, []);
 
   const approvers = useMemo(() => {
@@ -62,24 +61,23 @@ export function ApprovalApplyPage() {
   }
 
   async function submit() {
-    setError(null);
     if (!subject.trim()) {
-      setError("请填写主题。");
+      showError("请填写主题。");
       return;
     }
     if (selected.length === 0) {
-      setError("请至少选择一位审批老师。");
+      showError("请至少选择一位审批老师。");
       return;
     }
     const allowedExts = [".pdf", ".ppt", ".pptx", ".doc", ".docx", ".txt", ".png", ".jpg", ".jpeg"];
     for (const f of files) {
       const ext = f.name.toLowerCase().substring(f.name.lastIndexOf("."));
       if (!allowedExts.includes(ext)) {
-        setError(`不支持的文件类型: ${f.name}。仅支持 pdf, ppt, doc, txt, 图片等。`);
+        showError(`不支持的文件类型: ${f.name}。仅支持 pdf, ppt, doc, txt, 图片等。`);
         return;
       }
       if (f.size > 30 * 1024 * 1024) {
-        setError(`文件大小不能超过 30MB: ${f.name}`);
+        showError(`文件大小不能超过 30MB: ${f.name}`);
         return;
       }
     }
@@ -97,7 +95,7 @@ export function ApprovalApplyPage() {
       await apiFetchWithProgress("/approvals/apply", fd, setUploadProgress);
       nav("/approvals");
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setSubmitting(false);
       setUploadProgress(null);
@@ -117,8 +115,6 @@ export function ApprovalApplyPage() {
           多选审批人 · 任一通过即可
         </span>
       </div>
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       <div className="twoCol" style={{ gridTemplateColumns: "1fr 360px" }}>
         <div className="card">

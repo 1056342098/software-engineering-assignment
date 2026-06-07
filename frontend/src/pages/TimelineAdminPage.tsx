@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api";
 import { useAuth } from "../auth";
@@ -15,8 +16,7 @@ export function TimelineAdminPage() {
   const [type, setType] = useState<"PARTY_APPLY" | "LEAGUE_APPLY">("PARTY_APPLY");
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     if (!user || (!user.roles.includes("ADMIN") && !user.roles.includes("LEADER"))) {
       navigate("/");
@@ -29,12 +29,11 @@ export function TimelineAdminPage() {
 
   async function fetchConfig() {
     setLoading(true);
-    setError(null);
-    try {
+        try {
       const data = await apiFetch<TimelineNode[]>(`/timeline-config/${type}`, { method: "GET" });
       setNodes(data);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -42,8 +41,7 @@ export function TimelineAdminPage() {
 
   async function saveConfig() {
     setLoading(true);
-    setError(null);
-    try {
+        try {
       const payload = nodes.map(n => ({
         ...n,
         intervalDays: typeof n.intervalDays === "string" ? 0 : n.intervalDays
@@ -54,7 +52,7 @@ export function TimelineAdminPage() {
       });
       alert("保存成功！");
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -95,7 +93,6 @@ export function TimelineAdminPage() {
           </button>
         </div>
         <div className="cardBody">
-          {error ? <div style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div> : null}
           {loading ? (
             <div className="muted">加载中...</div>
           ) : (

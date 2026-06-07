@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
@@ -14,15 +15,13 @@ type StudentDto = {
 export function StudentsPage() {
   const [items, setItems] = useState<StudentDto[]>([]);
   const [q, setQ] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
+  
   async function refresh() {
-    setError(null);
-    try {
+        try {
       const list = await apiFetch<StudentDto[]>("/students", { method: "GET" });
       setItems(list);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -54,7 +53,6 @@ export function StudentsPage() {
             <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索：姓名/学号/专业/班级" style={{ flex: 1 }} />
             <span className="badge">{filtered.length}</span>
           </div>
-          {error ? <div style={{ marginTop: 10, color: "var(--danger)" }}>{error}</div> : null}
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useState } from "react";
 import { apiFetch } from "../api";
 
@@ -6,12 +7,10 @@ type AskResp = { answer: string; source: { docId: number; title: string; chunkNo
 export function QaPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<AskResp | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
   async function ask() {
-    setError(null);
-    setAnswer(null);
+        setAnswer(null);
     setLoading(true);
     try {
       const data = await apiFetch<AskResp>("/qa/ask", {
@@ -20,7 +19,7 @@ export function QaPage() {
       });
       setAnswer(data);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -49,7 +48,6 @@ export function QaPage() {
               {loading ? "查询中…" : "查询"}
             </button>
           </div>
-          {error ? <div style={{ marginTop: 10, color: "var(--danger)" }}>{error}</div> : null}
         </div>
       </div>
 

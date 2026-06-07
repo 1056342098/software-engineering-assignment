@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
@@ -7,16 +8,14 @@ export function LoginPage() {
   const nav = useNavigate();
   const [loginName, setLoginName] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
+  
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    try {
+        try {
       await auth.login(loginName, password);
       nav("/", { replace: true });
     } catch (err) {
-      setError((err as Error).message);
+      showError((err as Error).message);
     }
   }
 
@@ -41,12 +40,7 @@ export function LoginPage() {
               登录
             </button>
           </form>
-          {error ? (
-            <div style={{ marginTop: 10, color: "var(--danger)" }}>
-              {error}
-            </div>
-          ) : null}
-          <div className="muted" style={{ marginTop: 12, fontSize: 12 }}>
+                    <div className="muted" style={{ marginTop: 12, fontSize: 12 }}>
             演示账号：student1 / teacher1 / cadre1 / leader1（密码均为 123456）
           </div>
         </div>

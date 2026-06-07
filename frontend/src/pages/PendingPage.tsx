@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch, apiFetchBlob } from "../api";
 
@@ -29,8 +30,7 @@ export function PendingPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<ApprovalDetailDto | null>(null);
   const [comment, setComment] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
+  
   const [studentProgress, setStudentProgress] = useState<{ serverNow: string; items: any[] } | null>(null);
 
   const selected = useMemo(() => approvals.find((a) => a.id === selectedId) ?? null, [approvals, selectedId]);
@@ -42,14 +42,12 @@ export function PendingPage() {
   }
 
   useEffect(() => {
-    setError(null);
-    void refresh().catch((e) => setError((e as Error).message));
+        void refresh().catch((e) => showError((e as Error).message));
   }, [mode]);
 
   useEffect(() => {
     if (!selectedId) return;
-    setError(null);
-    setDetail(null);
+        setDetail(null);
     setStudentProgress(null);
     void apiFetch<ApprovalDetailDto>(`/approvals/${selectedId}`, { method: "GET" })
       .then((res) => {
@@ -60,13 +58,12 @@ export function PendingPage() {
             .catch(() => {});
         }
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
   }, [selectedId]);
 
   async function act(action: "approve" | "reject" | "revoke") {
     if (!selectedId) return;
-    setError(null);
-    try {
+        try {
       await apiFetch(`/approvals/${selectedId}/${action}`, {
         method: "POST",
         body: JSON.stringify({ comment: comment.trim() || undefined }),
@@ -81,13 +78,12 @@ export function PendingPage() {
           .catch(() => {});
       }
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
   async function downloadAttachment(approvalId: number, attachmentId: number, fileName: string) {
-    setError(null);
-    try {
+        try {
       const blob = await apiFetchBlob(`/approvals/${approvalId}/attachments/${attachmentId}/download`);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -98,7 +94,7 @@ export function PendingPage() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -132,8 +128,6 @@ export function PendingPage() {
         </button>
         </div>
       </div>
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       <div className="twoCol" style={{ gridTemplateColumns: "420px 1fr" }}>
         <div className="card">

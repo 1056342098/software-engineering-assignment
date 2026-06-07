@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch, apiFetchBlob, apiFetchWithProgress } from "../api";
 import { useAuth } from "../auth";
@@ -8,8 +9,7 @@ export function PolicyPage() {
   const auth = useAuth();
   const canUpload = auth.hasRole("TEACHER", "LEADER");
   const [docs, setDocs] = useState<PolicyDoc[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [qaInput, setQaInput] = useState("");
+    const [qaInput, setQaInput] = useState("");
   const [qaQuery, setQaQuery] = useState("");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -23,13 +23,12 @@ export function PolicyPage() {
   const [editCategory, setEditCategory] = useState("");
 
   async function refresh() {
-    setError(null);
-    try {
+        try {
       const path = canUpload && viewMode === "mine" ? "/policy/docs/mine" : "/policy/docs";
       const list = await apiFetch<PolicyDoc[]>(path, { method: "GET" });
       setDocs(list);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -42,18 +41,17 @@ export function PolicyPage() {
     const allowedExtensions = [".pdf", ".txt", ".doc", ".docx"];
     const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
     if (!allowedExtensions.includes(fileExt)) {
-      setError("政策库仅支持上传 pdf, txt, word (.doc, .docx) 格式的文件。");
+      showError("政策库仅支持上传 pdf, txt, word (.doc, .docx) 格式的文件。");
       return;
     }
     if (file.size > 30 * 1024 * 1024) {
-      setError("文件大小不能超过 30MB。");
+      showError("文件大小不能超过 30MB。");
       return;
     }
 
     setUploading(true);
     setUploadProgress(0);
-    setError(null);
-    try {
+        try {
       const fd = new FormData();
       fd.append("title", (title || file.name).trim() || file.name);
       if (category.trim()) fd.append("category", category.trim());
@@ -65,7 +63,7 @@ export function PolicyPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       await refresh();
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setUploading(false);
       setUploadProgress(null);
@@ -80,8 +78,7 @@ export function PolicyPage() {
 
   async function saveEdit() {
     if (!editingId) return;
-    setError(null);
-    try {
+        try {
       await apiFetch(`/policy/docs/${editingId}`, {
         method: "PUT",
         body: JSON.stringify({ title: editTitle, category: editCategory }),
@@ -89,19 +86,18 @@ export function PolicyPage() {
       setEditingId(null);
       await refresh();
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
   async function revokeDoc(id: number) {
     if (!window.confirm("确认撤回该政策文件？撤回后学生侧不可见，且将移除检索。")) return;
-    setError(null);
-    try {
+        try {
       await apiFetch(`/policy/docs/${id}`, { method: "DELETE" });
       if (editingId === id) setEditingId(null);
       await refresh();
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -117,7 +113,7 @@ export function PolicyPage() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     }
   }
 
@@ -251,8 +247,6 @@ export function PolicyPage() {
           </div>
         </div>
       ) : null}
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       <div className="grid" style={{ gap: 10 }}>
         {docs.map((d) => (

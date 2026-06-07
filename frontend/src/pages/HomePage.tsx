@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
@@ -23,12 +24,10 @@ export function HomePage() {
   const auth = useAuth();
   const [progress, setProgress] = useState<ProgressResp | null>(null);
   const [profile, setProfile] = useState<ProfileResp | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     if (!auth.hasRole("STUDENT")) return;
-    setError(null);
-    void Promise.all([
+        void Promise.all([
       apiFetch<ProgressResp>("/approvals/progress/me", { method: "GET" }),
       apiFetch<ProfileResp>("/profile/me", { method: "GET" }),
     ])
@@ -36,7 +35,7 @@ export function HomePage() {
         setProgress(p);
         setProfile(prof);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => showError((e as Error).message));
   }, [auth]);
 
   const notices = useMemo(() => {
@@ -95,8 +94,6 @@ export function HomePage() {
           简洁版 Web 前端（后续可扩展小程序端）
         </span> */}
       </div>
-
-      {error ? <div style={{ color: "var(--danger)" }}>{error}</div> : null}
 
       {auth.hasRole("STUDENT") && creditNotice ? (
         <div className="card">

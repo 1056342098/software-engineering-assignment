@@ -1,3 +1,4 @@
+import { showError } from "../components/ErrorModal";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api";
 
@@ -15,23 +16,21 @@ export function QaTestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     void fetchQuestions();
   }, [type]);
 
   async function fetchQuestions() {
     setLoading(true);
-    setError(null);
-    setAnswers({});
+        setAnswers({});
     setSubmitted(false);
     setScore(0);
     try {
       const data = await apiFetch<QuestionDto[]>(`/selftest/questions/${type}`, { method: "GET" });
       setQuestions(data);
     } catch (e) {
-      setError((e as Error).message);
+      showError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -74,7 +73,6 @@ export function QaTestPage() {
           </button>
         </div>
         <div className="cardBody">
-          {error ? <div style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div> : null}
           {loading ? (
             <div className="muted">加载中...</div>
           ) : questions.length === 0 ? (

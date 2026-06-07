@@ -13,26 +13,30 @@ import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { StudentsPage } from "./pages/StudentsPage";
 import { TimelineAdminPage } from "./pages/TimelineAdminPage";
 import { QaTestPage } from "./pages/QaTestPage";
+import { ErrorModal } from "./components/ErrorModal";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<Layout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/qa" element={<Navigate to="/policy" replace />} />
-          <Route path="/policy" element={<PolicyPage />} />
-          <Route path="/approvals" element={<ApprovalsPage />} />
-          <Route path="/approvals/new" element={<ApprovalApplyPage />} />
-          <Route path="/pending" element={<PendingPage />} />
-          <Route path="/students" element={<StudentsPage />} />
-          <Route path="/students/:studentId" element={<StudentDetailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/timeline-admin" element={<TimelineAdminPage />} />
-          <Route path="/selftest" element={<QaTestPage />} />
+    <>
+      <ErrorModal />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/qa" element={<Navigate to="/policy" replace />} />
+            <Route path="/policy" element={<PolicyPage />} />
+            <Route path="/approvals" element={<ApprovalsPage />} />
+            <Route path="/approvals/new" element={<ApprovalApplyPage />} />
+            <Route path="/pending" element={<PendingPage />} />
+            <Route path="/students" element={<StudentsPage />} />
+            <Route path="/students/:studentId" element={<StudentDetailPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/timeline-admin" element={<TimelineAdminPage />} />
+            <Route path="/selftest" element={<QaTestPage />} />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }
