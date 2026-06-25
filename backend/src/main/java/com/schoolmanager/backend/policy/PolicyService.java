@@ -170,7 +170,7 @@ public class PolicyService {
 
     @Transactional
     public PolicyDoc updateMeta(long operatorId, long docId, String title, String category) {
-        PolicyDoc doc = docRepository.findById(docId).orElseThrow(() -> new ApiException(404, "未找到该政策文件"));
+        PolicyDoc doc = docRepository.findByIdWithUploader(docId).orElseThrow(() -> new ApiException(404, "未找到该政策文件"));
         if (doc.getUploader() == null || doc.getUploader().getId() == null || doc.getUploader().getId() != operatorId) {
             throw new ApiException(403, "只能修改自己上传的政策文件");
         }

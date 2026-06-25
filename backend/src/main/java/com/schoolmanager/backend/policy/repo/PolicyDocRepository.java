@@ -13,4 +13,7 @@ public interface PolicyDocRepository extends JpaRepository<PolicyDoc, Long> {
 
 	@Query("select d from PolicyDoc d join fetch d.uploader where d.uploader.id = :uploaderId order by d.id desc")
 	List<PolicyDoc> findByUploader_IdOrderByIdDesc(@Param("uploaderId") Long uploaderId);
+
+	@Query("select d from PolicyDoc d join fetch d.uploader where d.id = :id")
+	java.util.Optional<PolicyDoc> findByIdWithUploader(@Param("id") Long id);
 }
