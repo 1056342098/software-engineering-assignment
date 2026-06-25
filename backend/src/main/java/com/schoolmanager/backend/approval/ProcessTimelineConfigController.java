@@ -45,7 +45,8 @@ public class ProcessTimelineConfigController {
             toSave.setStageIndex(i);
             toSave.setStageCode(node.getStageCode());
             toSave.setStageName(node.getStageName());
-            toSave.setIntervalDays(node.getIntervalDays() == null ? 0 : node.getIntervalDays());
+            toSave.setStartTime(node.getStartTime());
+            toSave.setEndTime(node.getEndTime());
             timelineNodeRepository.save(toSave);
         }
         

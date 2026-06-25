@@ -109,7 +109,7 @@ public class ApprovalController {
 						p.stageIndex(),
 						p.stageCode(),
 						p.stageName(),
-						p.stages().stream().map(s -> new StageDto(s.code(), s.name())).toList(),
+						p.stages().stream().map(s -> new StageDto(s.code(), s.name(), s.startTime(), s.endTime())).toList(),
 						p.lastResult(),
 						p.lastAssessedAt(),
 						p.nextDueAt(),
@@ -289,6 +289,6 @@ public class ApprovalController {
 			Long pendingApprovalId) {
 	}
 
-	public record StageDto(String code, String name) {
+	public record StageDto(String code, String name, Instant startTime, Instant endTime) {
 	}
 }

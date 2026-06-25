@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 public class ApprovalProcessProgressService {
 
-	public record StageDef(String code, String name, int intervalDays) {
+	public record StageDef(String code, String name, Instant startTime, Instant endTime) {
 	}
 
 	public record ProgressView(
@@ -55,17 +55,10 @@ public class ApprovalProcessProgressService {
 
 	private Instant calculateNextDueAt(ApprovalProcessProgress p, List<StageDef> stages) {
 		int idx = clampStageIndex(p.getStageIndex(), stages);
-		if (idx >= stages.size() - 1) {
+		if (idx >= stages.size()) {
 			return null;
 		}
-		int interval = stages.get(idx).intervalDays();
-		if (p.getLastAssessedAt() != null) {
-			return p.getLastAssessedAt().plus(interval, ChronoUnit.DAYS);
-		} else if (p.getCreatedAt() != null) {
-			return p.getCreatedAt().plus(interval, ChronoUnit.DAYS);
-		} else {
-			return Instant.now().plus(interval, ChronoUnit.DAYS);
-		}
+		return stages.get(idx).endTime();
 	}
 
 	@Transactional
@@ -79,9 +72,13 @@ public class ApprovalProcessProgressService {
 		if (isFinalStage(p, stages)) {
 			throw new ApiException(400, "已处于最后阶段，无需再次提交");
 		}
-		Instant actualNextDueAt = calculateNextDueAt(p, stages);
-		if (actualNextDueAt != null && now.isBefore(actualNextDueAt)) {
+		int idx = clampStageIndex(p.getStageIndex(), stages);
+		StageDef currentStage = stages.get(idx);
+		if (currentStage.startTime() != null && now.isBefore(currentStage.startTime())) {
 			throw new ApiException(400, "未到下一阶段的提交时间，提交失败");
+		}
+		if (currentStage.endTime() != null && now.isAfter(currentStage.endTime())) {
+			throw new ApiException(400, "已过期，请等待下次申请开放");
 		}
 		if (approvalRepository.existsByApplicant_IdAndTypeAndStatus(userId, approvalType, ApprovalService.STATUS_PENDING)) {
 			throw new ApiException(400, "重复提交，提交失败");
@@ -121,11 +118,9 @@ public class ApprovalProcessProgressService {
 				p.setStageIndex(stageIndex);
 				p.setStageCode(stages.get(stageIndex).code());
 			}
-			int nextInterval = stages.get(stageIndex).intervalDays();
-			p.setNextDueAt(stageIndex >= stages.size() - 1 ? null : decidedAt.plus(nextInterval, ChronoUnit.DAYS));
+			p.setNextDueAt(stageIndex >= stages.size() - 1 ? null : stages.get(stageIndex).endTime());
 		} else if (ApprovalService.STATUS_REJECTED.equals(decision)) {
-			int currentInterval = stages.get(stageIndex).intervalDays();
-			p.setNextDueAt(decidedAt.plus(currentInterval, ChronoUnit.DAYS));
+			p.setNextDueAt(stages.get(stageIndex).endTime());
 		} else if (ApprovalService.STATUS_REVOKED.equals(decision)) {
 			// When revoked, just keep the current nextDueAt or reset properly if needed.
 		}
@@ -215,7 +210,7 @@ public class ApprovalProcessProgressService {
 		String t = approvalType == null ? "" : approvalType.trim().toUpperCase(Locale.ROOT);
 		List<ProcessTimelineNode> nodes = timelineNodeRepository.findByApprovalTypeOrderByStageIndexAsc(t);
 		return nodes.stream()
-				.map(n -> new StageDef(n.getStageCode(), n.getStageName(), n.getIntervalDays()))
+				.map(n -> new StageDef(n.getStageCode(), n.getStageName(), n.getStartTime(), n.getEndTime()))
 				.collect(Collectors.toList());
 	}
 }

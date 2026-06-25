@@ -35,7 +35,7 @@ type ProgressItem = {
   stageIndex: number;
   stageCode: string;
   stageName: string;
-  stages: Array<{ code: string; name: string }>;
+  stages: Array<{ code: string; name: string; startTime: string | null; endTime: string | null }>;
   lastResult: string | null;
   lastAssessedAt: string | null;
   nextDueAt: string | null;
@@ -161,7 +161,12 @@ export function ApprovalsPage() {
                     </div>
                   ) : null}
 
-                  <TimeAxis serverNow={progress.serverNow} nextDueAt={it.nextDueAt} />
+                  <TimeAxis
+                    serverNow={progress.serverNow}
+                    startTime={it.stages[it.stageIndex]?.startTime}
+                    endTime={it.stages[it.stageIndex]?.endTime}
+                    isFinal={it.stageIndex >= it.stages.length}
+                  />
 
                   <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
                     {it.pendingApprovalId ? (
@@ -314,33 +319,66 @@ function badgeClassForStatus(status: string) {
   return "badge";
 }
 
-function TimeAxis({ serverNow, nextDueAt }: { serverNow: string; nextDueAt: string | null }) {
+function TimeAxis({ serverNow, startTime, endTime, isFinal }: { serverNow: string; startTime?: string | null; endTime?: string | null; isFinal?: boolean }) {
+  if (isFinal) {
+    return (
+      <div className="card" style={{ padding: 12, background: "var(--surface-2)" }}>
+        <div className="kvs" style={{ alignItems: "start" }}>
+          <div className="kvKey">当前时间</div>
+          <div className="kvVal">{fmtDateTime(serverNow)}</div>
+          <div className="kvKey">申请开放时间</div>
+          <div className="kvVal">
+            <span className="badge badgeOk">已完成所有阶段（无需再考核）</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const now = new Date(serverNow);
-  const next = nextDueAt ? new Date(nextDueAt) : null;
-  const diffDays = next ? Math.ceil((next.getTime() - now.getTime()) / 86400000) : null;
-  const dueText = next ? fmtDateTime(nextDueAt!) : "已到最终阶段（无需再考核）";
-  const statusBadge =
-    !next
-      ? "badge badgeOk"
-      : diffDays !== null && diffDays <= 0
-        ? "badge badgeDanger"
-        : diffDays !== null && diffDays <= 7
-          ? "badge badgeWarn"
-          : "badge badgePrimary";
+  const start = startTime ? new Date(startTime) : null;
+  const end = endTime ? new Date(endTime) : null;
+  
+  let statusBadge = "badge badgePrimary";
+  let statusText = "时间未设置";
+
+  if (start && end) {
+    if (now < start) {
+      statusBadge = "badge badgeWarn";
+      statusText = `未开始 (${fmtDateTime(startTime!)} 开始)`;
+    } else if (now > end) {
+      statusBadge = "badge badgeDanger";
+      statusText = `已过期，请等待下次申请开放`;
+    } else {
+      statusBadge = "badge badgeOk";
+      statusText = `开放中 (${fmtDateTime(startTime!)} ~ ${fmtDateTime(endTime!)})`;
+    }
+  } else if (start) {
+    if (now < start) {
+      statusBadge = "badge badgeWarn";
+      statusText = `未开始 (${fmtDateTime(startTime!)} 开始)`;
+    } else {
+      statusBadge = "badge badgeOk";
+      statusText = `开放中 (${fmtDateTime(startTime!)} 开始)`;
+    }
+  } else if (end) {
+    if (now > end) {
+      statusBadge = "badge badgeDanger";
+      statusText = `已过期，请等待下次申请开放`;
+    } else {
+      statusBadge = "badge badgeOk";
+      statusText = `开放中 (至 ${fmtDateTime(endTime!)})`;
+    }
+  }
 
   return (
     <div className="card" style={{ padding: 12, background: "var(--surface-2)" }}>
       <div className="kvs" style={{ alignItems: "start" }}>
         <div className="kvKey">当前时间</div>
         <div className="kvVal">{fmtDateTime(serverNow)}</div>
-        <div className="kvKey">下一次考核</div>
+        <div className="kvKey">当前阶段申请时间</div>
         <div className="kvVal">
-          <span className={statusBadge}>{dueText}</span>
-          {next && diffDays !== null ? (
-            <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
-              {diffDays <= 0 ? `已到期（${Math.abs(diffDays)}天前）` : `还有 ${diffDays} 天`}
-            </span>
-          ) : null}
+          <span className={statusBadge}>{statusText}</span>
         </div>
       </div>
     </div>

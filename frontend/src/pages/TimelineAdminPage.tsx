@@ -7,7 +7,8 @@ import { useNavigate } from "react-router-dom";
 type TimelineNode = {
   stageCode: string;
   stageName: string;
-  intervalDays: number | string;
+  startTime: string | null;
+  endTime: string | null;
 };
 
 export function TimelineAdminPage() {
@@ -44,7 +45,8 @@ export function TimelineAdminPage() {
         try {
       const payload = nodes.map(n => ({
         ...n,
-        intervalDays: typeof n.intervalDays === "string" ? 0 : n.intervalDays
+        startTime: n.startTime ? new Date(n.startTime).toISOString() : null,
+        endTime: n.endTime ? new Date(n.endTime).toISOString() : null,
       }));
       await apiFetch(`/timeline-config/${type}`, {
         method: "PUT",
@@ -58,14 +60,21 @@ export function TimelineAdminPage() {
     }
   }
 
-  function handleNodeChange(index: number, field: keyof TimelineNode, value: string | number) {
+  function formatDateTimeLocal(iso: string | null) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function handleNodeChange(index: number, field: keyof TimelineNode, value: string | null) {
     const newNodes = [...nodes];
     newNodes[index] = { ...newNodes[index], [field]: value };
     setNodes(newNodes);
   }
 
   function addNode() {
-    setNodes([...nodes, { stageCode: "", stageName: "", intervalDays: 0 }]);
+    setNodes([...nodes, { stageCode: "", stageName: "", startTime: null, endTime: null }]);
   }
 
   function removeNode(index: number) {
@@ -116,16 +125,20 @@ export function TimelineAdminPage() {
                   />
                   <div className="row" style={{ gap: 4, alignItems: "center" }}>
                     <input
-                      type="number"
+                      type="datetime-local"
                       className="input"
-                      style={{ width: 80 }}
-                      value={node.intervalDays}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleNodeChange(index, "intervalDays", val === "" ? "" : parseInt(val) || 0);
-                      }}
+                      style={{ width: 180 }}
+                      value={formatDateTimeLocal(node.startTime)}
+                      onChange={(e) => handleNodeChange(index, "startTime", e.target.value ? new Date(e.target.value).toISOString() : null)}
                     />
-                    <span className="muted">天后可进入下一阶段</span>
+                    <span className="muted">至</span>
+                    <input
+                      type="datetime-local"
+                      className="input"
+                      style={{ width: 180 }}
+                      value={formatDateTimeLocal(node.endTime)}
+                      onChange={(e) => handleNodeChange(index, "endTime", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                    />
                   </div>
                   <button className="btn btnDanger" onClick={() => removeNode(index)}>
                     删除

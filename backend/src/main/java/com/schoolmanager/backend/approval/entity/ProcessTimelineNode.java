@@ -1,6 +1,7 @@
 package com.schoolmanager.backend.approval.entity;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 
 @Entity
 @Table(name = "process_timeline_node")
@@ -21,8 +22,11 @@ public class ProcessTimelineNode {
     @Column(name = "stage_name", nullable = false, length = 64)
     private String stageName;
 
-    @Column(name = "interval_days", nullable = false)
-    private Integer intervalDays;
+    @Column(name = "start_time")
+    private Instant startTime;
+
+    @Column(name = "end_time")
+    private Instant endTime;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -34,6 +38,8 @@ public class ProcessTimelineNode {
     public void setStageCode(String stageCode) { this.stageCode = stageCode; }
     public String getStageName() { return stageName; }
     public void setStageName(String stageName) { this.stageName = stageName; }
-    public Integer getIntervalDays() { return intervalDays; }
-    public void setIntervalDays(Integer intervalDays) { this.intervalDays = intervalDays; }
+    public Instant getStartTime() { return startTime; }
+    public void setStartTime(Instant startTime) { this.startTime = startTime; }
+    public Instant getEndTime() { return endTime; }
+    public void setEndTime(Instant endTime) { this.endTime = endTime; }
 }

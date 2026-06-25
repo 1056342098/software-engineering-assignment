@@ -48,15 +48,38 @@ export function HomePage() {
       badgeClass: string;
       actionTo: string;
     }> = [];
-    for (const it of progress.items) {
-      if (!it.nextDueAt) continue;
-      const next = new Date(it.nextDueAt);
-      const diffDays = Math.ceil((next.getTime() - now.getTime()) / 86400000);
-      if (diffDays > 7) continue;
+    for (const it of progress.items as any) {
+      if (it.stageIndex >= it.stages.length) continue;
+      const stage = it.stages[it.stageIndex];
+      const start = stage?.startTime ? new Date(stage.startTime) : null;
+      const end = stage?.endTime ? new Date(stage.endTime) : null;
+      if (!start && !end) continue;
+      
+      let dueText = "";
+      let badgeClass = "";
+      let title = "";
+      
       const kind = it.approvalType === "PARTY_APPLY" ? "入党" : "入团";
-      const dueText = `${fmtDateTime(it.nextDueAt)}（${diffDays <= 0 ? "已到期" : `还有 ${diffDays} 天`}）`;
-      const badgeClass = diffDays <= 0 ? "badge badgeDanger" : "badge badgeWarn";
-      const title = it.pendingApprovalId ? `${kind}考核：已提交，等待审批` : `${kind}考核：临近提醒`;
+      if (it.pendingApprovalId) {
+        title = `${kind}考核：已提交，等待审批`;
+        dueText = "已提交";
+        badgeClass = "badge badgePrimary";
+      } else if (end && now > end) {
+        title = `${kind}考核：已过期`;
+        dueText = "已过期";
+        badgeClass = "badge badgeDanger";
+      } else if (start && now < start) {
+        title = `${kind}考核：即将开放`;
+        const diffDays = Math.ceil((start.getTime() - now.getTime()) / 86400000);
+        dueText = `还有 ${diffDays} 天开放`;
+        badgeClass = "badge badgeWarn";
+      } else {
+        title = `${kind}考核：开放中`;
+        const diffDays = end ? Math.ceil((end.getTime() - now.getTime()) / 86400000) : 0;
+        dueText = end ? `还有 ${diffDays} 天截止` : "开放中";
+        badgeClass = diffDays <= 3 ? "badge badgeDanger" : "badge badgeOk";
+      }
+
       out.push({ approvalType: it.approvalType, title, dueText, badgeClass, actionTo: `/approvals/new?type=${it.approvalType}` });
     }
     return out;
@@ -151,11 +174,6 @@ export function HomePage() {
       </div>
     </div>
   );
-}
-
-function fmtDateTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function calcYearOfStudy(grade: number) {
