@@ -39,7 +39,11 @@ export async function apiFetch<T>(
   try {
     const text = await resp.text();
     if (!text) {
-      json = { code: 0, message: "OK", data: null };
+      let msg = resp.ok ? "OK" : `请求失败 (HTTP ${resp.status})`;
+      if (resp.status === 502 || resp.status === 504) {
+        msg = "后端服务正在启动或不可用，请稍候重试。";
+      }
+      json = { code: resp.ok ? 0 : resp.status, message: msg, data: null };
     } else if (text.trim().startsWith("<")) {
       let errorMsg = `服务器错误 (${resp.status}): 请稍后重试。`;
       if (resp.status === 502 || resp.status === 504) {
