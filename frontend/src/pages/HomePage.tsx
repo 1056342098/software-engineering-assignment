@@ -165,13 +165,13 @@ function calcYearOfStudy(grade: number) {
 }
 
 function safeNum(v: unknown): number {
-  if (typeof v === "number" && Number.isFinite(v)) return Math.max(0, v);
+  if (typeof v === "number" && Number.isFinite(v)) return Math.max(0, Math.min(Math.round(v * 100) / 100, 1000));
   if (typeof v === "string") {
     const s = v.trim();
     if (!s) return 0;
     const n = Number(s);
     if (!Number.isFinite(n)) return 0;
-    return Math.max(0, n);
+    return Math.max(0, Math.min(Math.round(n * 100) / 100, 1000));
   }
   return 0;
 }

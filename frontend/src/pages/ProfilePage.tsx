@@ -26,13 +26,14 @@ type ProfileResp = {
 };
 
 type CreditModule = { name: string; required: number; earned: number };
+type CreditModuleDraft = { name: string; required: number | string; earned: number | string };
 
 export function ProfilePage() {
   const [data, setData] = useState<ProfileResp | null>(null);
-    const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [creditModules, setCreditModules] = useState<CreditModule[]>([]);
   const [creditEditOpen, setCreditEditOpen] = useState(false);
-  const [creditDraft, setCreditDraft] = useState<CreditModule[]>([]);
+  const [creditDraft, setCreditDraft] = useState<CreditModuleDraft[]>([]);
 
   useEffect(() => {
         void apiFetch<ProfileResp>("/profile/me", { method: "GET" })
@@ -58,7 +59,7 @@ export function ProfilePage() {
     return { totalRequired, totalEarned, remaining, pct };
   }, [creditModules]);
 
-  async function saveCredits(modules: CreditModule[]) {
+  async function saveCredits(modules: CreditModuleDraft[]) {
     if (!data) return;
         setSaving(true);
     try {
@@ -77,6 +78,15 @@ export function ProfilePage() {
       setSaving(false);
     }
   }
+
+  const draftStats = useMemo(() => {
+    const modules = creditDraft ?? [];
+    const totalRequired = sum(modules.map((m) => safeNum(m.required)));
+    const totalEarned = sum(modules.map((m) => Math.min(safeNum(m.earned), safeNum(m.required) || safeNum(m.earned))));
+    const remaining = Math.max(totalRequired - totalEarned, 0);
+    const pct = totalRequired > 0 ? Math.min(totalEarned / totalRequired, 1) : 0;
+    return { totalRequired, totalEarned, remaining, pct };
+  }, [creditDraft]);
 
   return (
     <div className="grid">
@@ -287,6 +297,23 @@ export function ProfilePage() {
                   <span className="badge">{creditDraft.length}</span>
                 </div>
                 <div className="cardBody">
+                  <div style={{ padding: 12, background: "var(--surface-3)", borderRadius: 8, marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>预览修改后的总进度</div>
+                    <div className="row" style={{ justifyContent: "space-between" }}>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        总要求：{draftStats.totalRequired}，已修：{draftStats.totalEarned}
+                      </div>
+                      <span className="badge">{Math.round(draftStats.pct * 100)}%</span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <ProgressBar pct={draftStats.pct} />
+                    </div>
+                    {draftStats.totalRequired > 0 && (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                        剩余学分：{draftStats.remaining}
+                      </div>
+                    )}
+                  </div>
                   <div className="grid" style={{ gap: 10 }}>
                     {creditDraft.length === 0 ? <div className="muted">暂无模块，点击“添加模块”。</div> : null}
 
@@ -302,7 +329,9 @@ export function ProfilePage() {
                           />
                           <input
                             className="input"
-                            inputMode="numeric"
+                            type="number"
+                            min="0"
+                            max="1000"
                             value={String(m.required ?? "")}
                             onChange={(e) => updateDraft(idx, { required: e.target.value }, setCreditDraft)}
                             placeholder="毕业要求"
@@ -310,7 +339,9 @@ export function ProfilePage() {
                           />
                           <input
                             className="input"
-                            inputMode="numeric"
+                            type="number"
+                            min="0"
+                            max="1000"
                             value={String(m.earned ?? "")}
                             onChange={(e) => updateDraft(idx, { earned: e.target.value }, setCreditDraft)}
                             placeholder="已修学分"
@@ -375,8 +406,8 @@ function readCreditModules(v: unknown): CreditModule[] | null {
 
 function updateDraft(
   idx: number,
-  patch: { name?: string; required?: string; earned?: string },
-  set: Dispatch<SetStateAction<CreditModule[]>>,
+  patch: { name?: string; required?: string | number; earned?: string | number },
+  set: Dispatch<SetStateAction<CreditModuleDraft[]>>,
 ) {
   set((prev) => {
     const next = [...prev];
@@ -385,25 +416,25 @@ function updateDraft(
     next[idx] = {
       ...cur,
       name: patch.name != null ? patch.name : cur.name,
-      required: patch.required != null ? safeNum(patch.required) : cur.required,
-      earned: patch.earned != null ? safeNum(patch.earned) : cur.earned,
+      required: patch.required != null ? patch.required : cur.required,
+      earned: patch.earned != null ? patch.earned : cur.earned,
     };
     return next;
   });
 }
 
-function removeDraft(idx: number, set: Dispatch<SetStateAction<CreditModule[]>>) {
+function removeDraft(idx: number, set: Dispatch<SetStateAction<CreditModuleDraft[]>>) {
   set((prev) => prev.filter((_, i) => i !== idx));
 }
 
 function safeNum(v: unknown): number {
-  if (typeof v === "number" && Number.isFinite(v)) return Math.max(0, Math.round(v * 100) / 100);
+  if (typeof v === "number" && Number.isFinite(v)) return Math.max(0, Math.min(Math.round(v * 100) / 100, 1000));
   if (typeof v === "string") {
     const s = v.trim();
     if (!s) return 0;
     const n = Number(s);
     if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.round(n * 100) / 100);
+    return Math.max(0, Math.min(Math.round(n * 100) / 100, 1000));
   }
   return 0;
 }
