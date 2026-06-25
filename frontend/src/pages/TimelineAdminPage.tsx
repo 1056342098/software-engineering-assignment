@@ -31,8 +31,14 @@ export function TimelineAdminPage() {
   async function fetchConfig() {
     setLoading(true);
         try {
-      const data = await apiFetch<TimelineNode[]>(`/timeline-config/${type}`, { method: "GET" });
-      setNodes(data);
+      const data = await apiFetch<any[]>(`/timeline-config/${type}`, { method: "GET" });
+      const mapped = data.map(n => ({
+        stageCode: n.stageCode,
+        stageName: n.stageName,
+        startTime: n.startTime,
+        endTime: n.endTime
+      }));
+      setNodes(mapped);
     } catch (e) {
       showError((e as Error).message);
     } finally {
@@ -43,11 +49,21 @@ export function TimelineAdminPage() {
   async function saveConfig() {
     setLoading(true);
         try {
-      const payload = nodes.map(n => ({
-        ...n,
-        startTime: n.startTime ? new Date(n.startTime).toISOString() : null,
-        endTime: n.endTime ? new Date(n.endTime).toISOString() : null,
-      }));
+      const payload = nodes.map(n => {
+        let st = null;
+        let et = null;
+        try {
+          if (n.startTime) st = new Date(n.startTime).toISOString();
+          if (n.endTime) et = new Date(n.endTime).toISOString();
+        } catch(err) {
+          console.error("invalid date", err);
+        }
+        return {
+          ...n,
+          startTime: st,
+          endTime: et,
+        };
+      });
       await apiFetch(`/timeline-config/${type}`, {
         method: "PUT",
         body: JSON.stringify(payload),
@@ -129,7 +145,7 @@ export function TimelineAdminPage() {
                       className="input"
                       style={{ width: 180 }}
                       value={formatDateTimeLocal(node.startTime)}
-                      onChange={(e) => handleNodeChange(index, "startTime", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                      onChange={(e) => handleNodeChange(index, "startTime", e.target.value || null)}
                     />
                     <span className="muted">至</span>
                     <input
@@ -137,7 +153,7 @@ export function TimelineAdminPage() {
                       className="input"
                       style={{ width: 180 }}
                       value={formatDateTimeLocal(node.endTime)}
-                      onChange={(e) => handleNodeChange(index, "endTime", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                      onChange={(e) => handleNodeChange(index, "endTime", e.target.value || null)}
                     />
                   </div>
                   <button className="btn btnDanger" onClick={() => removeNode(index)}>
