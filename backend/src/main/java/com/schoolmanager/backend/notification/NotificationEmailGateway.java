@@ -1,5 +1,7 @@
 package com.schoolmanager.backend.notification;
 
+import java.util.List;
+
 public interface NotificationEmailGateway {
 	String send(SendCommand command);
 
@@ -14,6 +16,13 @@ public interface NotificationEmailGateway {
 			boolean sslEnabled,
 			String toEmail,
 			String subject,
-			String text) {
+			String text,
+			List<Attachment> attachments) {
+	}
+
+	record Attachment(
+			String fileName,
+			String filePath,
+			String mimeType) {
 	}
 }

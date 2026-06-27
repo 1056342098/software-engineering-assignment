@@ -3,6 +3,7 @@ package com.schoolmanager.backend.notification;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolmanager.backend.common.ApiException;
+import com.schoolmanager.backend.config.AppProperties;
 import com.schoolmanager.backend.notification.entity.Notification;
 import com.schoolmanager.backend.notification.entity.NotificationDelivery;
 import com.schoolmanager.backend.notification.entity.NotificationRecipient;
@@ -15,15 +16,21 @@ import com.schoolmanager.backend.profile.repo.StudentRepository;
 import com.schoolmanager.backend.student.repo.ClassManagerRepository;
 import com.schoolmanager.backend.user.entity.SysUser;
 import com.schoolmanager.backend.user.repo.SysUserRepository;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,6 +49,7 @@ public class NotificationService {
 	private final NotificationEmailGateway notificationEmailGateway;
 	private final ObjectMapper objectMapper;
 	private final OperationLogService opLogService;
+	private final Path notificationDir;
 
 	public NotificationService(
 			NotificationRepository notificationRepository,
@@ -53,7 +61,8 @@ public class NotificationService {
 			NotificationEmailSettingsService emailSettingsService,
 			NotificationEmailGateway notificationEmailGateway,
 			ObjectMapper objectMapper,
-			OperationLogService opLogService) {
+			OperationLogService opLogService,
+			AppProperties props) {
 		this.notificationRepository = notificationRepository;
 		this.recipientRepository = recipientRepository;
 		this.deliveryRepository = deliveryRepository;
@@ -64,6 +73,7 @@ public class NotificationService {
 		this.notificationEmailGateway = notificationEmailGateway;
 		this.objectMapper = objectMapper;
 		this.opLogService = opLogService;
+		this.notificationDir = Path.of(props.getStorage().getNotificationDir());
 	}
 
 	@Transactional
@@ -84,13 +94,13 @@ public class NotificationService {
 		Notification notification = new Notification();
 		notification.setTitle(requireText(command.title(), "标题不能为空"));
 		notification.setContent(requireText(command.content(), "正文不能为空"));
-		notification.setAttachmentName(normalize(command.attachmentName()));
-		notification.setAttachmentUrl(normalize(command.attachmentUrl()));
 		notification.setExpireAt(command.expireAt());
 		notification.setTagsJson(writeJson(normalizeList(command.tags())));
 		notification.setChannelsJson(writeJson(channels));
 		notification.setTargetJson(writeJson(command.target() == null ? Map.of() : command.target()));
 		notification.setCreatedBy(creator);
+		notification = notificationRepository.save(notification);
+		storeAttachment(notification, command.attachment());
 		notification = notificationRepository.save(notification);
 
 		Instant now = Instant.now();
@@ -126,6 +136,28 @@ public class NotificationService {
 	}
 
 	@Transactional(readOnly = true)
+	public AttachmentDownloadView getAttachmentForDownload(long operatorId, Set<String> roleCodes,
+			long notificationId) {
+		Notification notification = notificationRepository.findByIdWithCreator(notificationId)
+				.orElseThrow(() -> new ApiException(404, "未找到通知"));
+		boolean senderAllowed = roleCodes.contains("LEADER")
+				|| (notification.getCreatedBy() != null && notification.getCreatedBy().getId().equals(operatorId));
+		boolean studentAllowed = recipientRepository.findByNotificationIdAndStudentId(notificationId, operatorId)
+				.isPresent();
+		if (!senderAllowed && !studentAllowed) {
+			throw new ApiException(403, "无权限下载该附件");
+		}
+		if (normalize(notification.getAttachmentFilePath()) == null
+				|| normalize(notification.getAttachmentName()) == null) {
+			throw new ApiException(404, "该通知没有附件");
+		}
+		return new AttachmentDownloadView(
+				notification.getAttachmentName(),
+				notification.getAttachmentMimeType(),
+				new FileSystemResource(notification.getAttachmentFilePath()));
+	}
+
+	@Transactional(readOnly = true)
 	public List<NotificationSummary> listSent(long operatorId, Set<String> roleCodes) {
 		List<Notification> notifications = roleCodes.contains("LEADER")
 				? notificationRepository.findAllWithCreatorOrderByIdDesc()
@@ -154,7 +186,7 @@ public class NotificationService {
 				readTags(notification),
 				readChannels(notification),
 				notification.getAttachmentName(),
-				notification.getAttachmentUrl(),
+				buildAttachmentUrl(notification),
 				notification.getExpireAt(),
 				new CreatorView(notification.getCreatedBy().getId(), notification.getCreatedBy().getRealName()),
 				notification.getCreatedAt(),
@@ -176,7 +208,7 @@ public class NotificationService {
 							readTags(notification),
 							readChannels(notification),
 							notification.getAttachmentName(),
-							notification.getAttachmentUrl(),
+							buildAttachmentUrl(notification),
 							notification.getExpireAt(),
 							recipient.getDeliveryStatus(),
 							recipient.getReadStatus(),
@@ -218,7 +250,7 @@ public class NotificationService {
 				readTags(notification),
 				readChannels(notification),
 				notification.getAttachmentName(),
-				notification.getAttachmentUrl(),
+				buildAttachmentUrl(notification),
 				notification.getExpireAt(),
 				new CreatorView(notification.getCreatedBy().getId(), notification.getCreatedBy().getRealName()),
 				notification.getCreatedAt(),
@@ -343,7 +375,8 @@ public class NotificationService {
 							senderConfig.sslEnabled(),
 							user.getEmail(),
 							notification.getTitle(),
-							buildEmailBody(notification, creator, student)));
+							buildEmailBody(notification, creator, student),
+							buildEmailAttachments(notification)));
 					yield new DeliveryResult("SENT", providerMessage, now);
 				} catch (Exception e) {
 					yield new DeliveryResult("FAILED", safeProviderMessage(e), null);
@@ -365,11 +398,92 @@ public class NotificationService {
 		if (notification.getExpireAt() != null) {
 			sb.append("截止时间：").append(notification.getExpireAt()).append("\n");
 		}
-		if (normalize(notification.getAttachmentUrl()) != null) {
-			sb.append("附件链接：").append(notification.getAttachmentUrl()).append("\n");
+		if (normalize(notification.getAttachmentName()) != null) {
+			sb.append("附件：").append(notification.getAttachmentName()).append("（已随邮件附带）\n");
 		}
 		sb.append("\n此邮件由校园管理系统自动发送。");
 		return sb.toString();
+	}
+
+	private List<NotificationEmailGateway.Attachment> buildEmailAttachments(Notification notification) {
+		if (normalize(notification.getAttachmentFilePath()) == null
+				|| normalize(notification.getAttachmentName()) == null) {
+			return List.of();
+		}
+		return List.of(new NotificationEmailGateway.Attachment(
+				notification.getAttachmentName(),
+				notification.getAttachmentFilePath(),
+				notification.getAttachmentMimeType() == null ? "application/octet-stream"
+						: notification.getAttachmentMimeType()));
+	}
+
+	private String buildAttachmentUrl(Notification notification) {
+		if (normalize(notification.getAttachmentFilePath()) == null
+				|| normalize(notification.getAttachmentName()) == null) {
+			return null;
+		}
+		return "/api/notifications/" + notification.getId() + "/attachment/download";
+	}
+
+	private void storeAttachment(Notification notification, MultipartFile attachment) {
+		if (attachment == null || attachment.isEmpty()) {
+			notification.setAttachmentName(null);
+			notification.setAttachmentUrl(null);
+			notification.setAttachmentFilePath(null);
+			notification.setAttachmentMimeType(null);
+			notification.setAttachmentFileSize(null);
+			return;
+		}
+		validateAttachment(attachment);
+		Path savedPath = null;
+		try {
+			Files.createDirectories(notificationDir);
+			String originalName = sanitizeOriginalName(attachment.getOriginalFilename(), "notification-attachment");
+			String safeName = originalName.replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+			savedPath = notificationDir
+					.resolve(notification.getId() + "_" + Instant.now().toEpochMilli() + "_" + safeName);
+			Files.copy(attachment.getInputStream(), savedPath);
+			notification.setAttachmentName(originalName);
+			notification.setAttachmentUrl("/api/notifications/" + notification.getId() + "/attachment/download");
+			notification.setAttachmentFilePath(savedPath.toAbsolutePath().toString());
+			notification.setAttachmentMimeType(normalize(attachment.getContentType()));
+			notification.setAttachmentFileSize(attachment.getSize());
+		} catch (Exception e) {
+			if (savedPath != null) {
+				try {
+					Files.deleteIfExists(savedPath);
+				} catch (Exception ignored) {
+				}
+			}
+			throw new ApiException(500, "通知附件保存失败");
+		}
+	}
+
+	private static void validateAttachment(MultipartFile attachment) {
+		String originalName = sanitizeOriginalName(attachment.getOriginalFilename(), "notification-attachment");
+		String lowerName = originalName.toLowerCase(Locale.ROOT);
+		if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".ppt") && !lowerName.endsWith(".pptx")
+				&& !lowerName.endsWith(".doc") && !lowerName.endsWith(".docx") && !lowerName.endsWith(".txt")
+				&& !lowerName.endsWith(".png") && !lowerName.endsWith(".jpg") && !lowerName.endsWith(".jpeg")
+				&& !lowerName.endsWith(".xls") && !lowerName.endsWith(".xlsx") && !lowerName.endsWith(".zip")) {
+			throw new ApiException(400, "通知附件类型不支持");
+		}
+		if (attachment.getSize() > 30L * 1024 * 1024) {
+			throw new ApiException(400, "通知附件不能超过 30MB");
+		}
+	}
+
+	private static String sanitizeOriginalName(String originalName, String fallback) {
+		String resolved = originalName == null ? fallback : originalName;
+		resolved = resolved.replace("\\", "/");
+		int lastSlash = resolved.lastIndexOf('/');
+		if (lastSlash >= 0) {
+			resolved = resolved.substring(lastSlash + 1);
+		}
+		if (resolved.isBlank()) {
+			return fallback;
+		}
+		return resolved;
 	}
 
 	private static String safeProviderMessage(Exception e) {
@@ -478,12 +592,11 @@ public class NotificationService {
 	public record CreateCommand(
 			String title,
 			String content,
-			String attachmentName,
-			String attachmentUrl,
 			Instant expireAt,
 			List<String> tags,
 			List<String> channels,
-			TargetFilter target) {
+			TargetFilter target,
+			MultipartFile attachment) {
 	}
 
 	public record TargetFilter(List<Long> studentIds, List<Integer> grades, List<String> classNames,
@@ -521,5 +634,8 @@ public class NotificationService {
 	public record InboxItem(Long id, String title, String content, List<String> tags, List<String> channels,
 			String attachmentName, String attachmentUrl, Instant expireAt, String deliveryStatus, String readStatus,
 			Instant readAt, CreatorView creator, Instant createdAt, List<ChannelDeliveryView> deliveries) {
+	}
+
+	public record AttachmentDownloadView(String fileName, String mimeType, Resource resource) {
 	}
 }

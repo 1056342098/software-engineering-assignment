@@ -2,6 +2,7 @@ package com.schoolmanager.backend.notification;
 
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,8 @@ public class SmtpNotificationEmailGateway implements NotificationEmailGateway {
 
 		MimeMessage mimeMessage = mailSender.createMimeMessage();
 		try {
-			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, false, StandardCharsets.UTF_8.name());
+			boolean hasAttachments = command.attachments() != null && !command.attachments().isEmpty();
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, hasAttachments, StandardCharsets.UTF_8.name());
 			if (command.senderName() == null || command.senderName().isBlank()) {
 				helper.setFrom(command.senderEmail());
 			} else {
@@ -41,6 +43,11 @@ public class SmtpNotificationEmailGateway implements NotificationEmailGateway {
 			helper.setTo(command.toEmail());
 			helper.setSubject(command.subject());
 			helper.setText(command.text(), false);
+			if (hasAttachments) {
+				for (NotificationEmailGateway.Attachment attachment : command.attachments()) {
+					helper.addAttachment(attachment.fileName(), new FileSystemResource(attachment.filePath()), attachment.mimeType());
+				}
+			}
 			mailSender.send(mimeMessage);
 			return "SMTP 已发送";
 		} catch (Exception e) {

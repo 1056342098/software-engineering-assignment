@@ -61,6 +61,7 @@ public class AppProperties {
 	public static class Storage {
 		private String policyDir = "./data/policy-files";
 		private String approvalDir = "./data/approval-files";
+		private String notificationDir = "./data/notification-files";
 
 		public String getPolicyDir() {
 			return policyDir;
@@ -76,6 +77,14 @@ public class AppProperties {
 
 		public void setApprovalDir(String approvalDir) {
 			this.approvalDir = approvalDir;
+		}
+
+		public String getNotificationDir() {
+			return notificationDir;
+		}
+
+		public void setNotificationDir(String notificationDir) {
+			this.notificationDir = notificationDir;
 		}
 	}
 

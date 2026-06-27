@@ -2,6 +2,7 @@ package com.schoolmanager.backend.notification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolmanager.backend.common.ApiException;
+import com.schoolmanager.backend.config.AppProperties;
 import com.schoolmanager.backend.notification.repo.NotificationDeliveryRepository;
 import com.schoolmanager.backend.notification.repo.NotificationRecipientRepository;
 import com.schoolmanager.backend.notification.repo.NotificationRepository;
@@ -58,6 +59,7 @@ class NotificationServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		AppProperties props = new AppProperties();
 		notificationService = new NotificationService(
 				notificationRepository,
 				recipientRepository,
@@ -68,7 +70,8 @@ class NotificationServiceTest {
 				emailSettingsService,
 				notificationEmailGateway,
 				new ObjectMapper(),
-				opLogService);
+				opLogService,
+				props);
 	}
 
 	@Test
@@ -89,10 +92,9 @@ class NotificationServiceTest {
 						"测试通知",
 						"正文",
 						null,
-						null,
-						null,
 						List.of(),
 						List.of("EMAIL"),
+						null,
 						null)));
 
 		assertEquals(400, ex.getCode());

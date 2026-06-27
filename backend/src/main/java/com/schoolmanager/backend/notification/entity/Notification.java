@@ -32,6 +32,15 @@ public class Notification {
 	@Column(name = "attachment_url", length = 1024)
 	private String attachmentUrl;
 
+	@Column(name = "attachment_file_path", length = 1024)
+	private String attachmentFilePath;
+
+	@Column(name = "attachment_mime_type", length = 128)
+	private String attachmentMimeType;
+
+	@Column(name = "attachment_file_size")
+	private Long attachmentFileSize;
+
 	@Column(name = "expire_at")
 	private Instant expireAt;
 
@@ -88,6 +97,30 @@ public class Notification {
 
 	public void setAttachmentUrl(String attachmentUrl) {
 		this.attachmentUrl = attachmentUrl;
+	}
+
+	public String getAttachmentFilePath() {
+		return attachmentFilePath;
+	}
+
+	public void setAttachmentFilePath(String attachmentFilePath) {
+		this.attachmentFilePath = attachmentFilePath;
+	}
+
+	public String getAttachmentMimeType() {
+		return attachmentMimeType;
+	}
+
+	public void setAttachmentMimeType(String attachmentMimeType) {
+		this.attachmentMimeType = attachmentMimeType;
+	}
+
+	public Long getAttachmentFileSize() {
+		return attachmentFileSize;
+	}
+
+	public void setAttachmentFileSize(Long attachmentFileSize) {
+		this.attachmentFileSize = attachmentFileSize;
 	}
 
 	public Instant getExpireAt() {

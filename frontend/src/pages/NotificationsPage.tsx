@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { showError } from "../components/ErrorModal";
-import { apiFetch } from "../api";
+import { apiFetch, apiFetchBlob } from "../api";
 import { useAuth } from "../auth";
 
 type StudentDto = {
@@ -92,8 +92,7 @@ export function NotificationsPage() {
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [attachmentName, setAttachmentName] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [expireAt, setExpireAt] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [gradesInput, setGradesInput] = useState("");
@@ -102,6 +101,7 @@ export function NotificationsPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [channels, setChannels] = useState<string[]>(["IN_APP", "EMAIL"]);
   const [submitting, setSubmitting] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refreshTeacherData() {
     if (!canPublish) return;
@@ -163,28 +163,30 @@ export function NotificationsPage() {
     }
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append("title", title.trim());
+      formData.append("content", content.trim());
+      if (expireAt) formData.append("expireAt", new Date(expireAt).toISOString());
+      for (const tag of parseCsv(tagsInput)) formData.append("tags", tag);
+      for (const channel of channels) formData.append("channels", channel);
+      formData.append(
+        "targetJson",
+        JSON.stringify({
+          studentIds: selectedStudentIds,
+          grades: parseCsv(gradesInput).map((item) => Number(item)).filter((value) => Number.isFinite(value)),
+          classNames: parseCsv(classNamesInput),
+          majors: parseCsv(majorsInput),
+        }),
+      );
+      if (attachmentFile) formData.append("attachment", attachmentFile, attachmentFile.name);
       const detail = await apiFetch<NotificationDetail>("/notifications", {
         method: "POST",
-        body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-          attachmentName: attachmentName.trim() || null,
-          attachmentUrl: attachmentUrl.trim() || null,
-          expireAt: expireAt ? new Date(expireAt).toISOString() : null,
-          tags: parseCsv(tagsInput),
-          channels,
-          target: {
-            studentIds: selectedStudentIds,
-            grades: parseCsv(gradesInput).map((item) => Number(item)).filter((value) => Number.isFinite(value)),
-            classNames: parseCsv(classNamesInput),
-            majors: parseCsv(majorsInput),
-          },
-        }),
+        body: formData,
       });
       setTitle("");
       setContent("");
-      setAttachmentName("");
-      setAttachmentUrl("");
+      setAttachmentFile(null);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
       setExpireAt("");
       setTagsInput("");
       setGradesInput("");
@@ -219,6 +221,22 @@ export function NotificationsPage() {
     }
   }
 
+  async function downloadAttachment(notificationId: number, attachmentName: string | null) {
+    try {
+      const blob = await apiFetchBlob(`/notifications/${notificationId}/attachment/download`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = attachmentName ?? `notification-${notificationId}-attachment`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
   return (
     <div className="grid">
       <div className="pageTitle">
@@ -243,8 +261,16 @@ export function NotificationsPage() {
               </div>
               <textarea className="input" rows={5} value={content} onChange={(e) => setContent(e.target.value)} placeholder="通知正文" />
               <div className="row" style={{ alignItems: "stretch" }}>
-                <input className="input" value={attachmentName} onChange={(e) => setAttachmentName(e.target.value)} placeholder="附件名称（可选）" style={{ flex: 1 }} />
-                <input className="input" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} placeholder="附件链接（可选）" style={{ flex: 2 }} />
+                <input
+                  ref={attachmentInputRef}
+                  className="input"
+                  type="file"
+                  onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+                  style={{ flex: 1 }}
+                />
+                <div className="muted" style={{ display: "flex", alignItems: "center", minWidth: 220 }}>
+                  {attachmentFile ? `已选择附件：${attachmentFile.name}` : "可选：上传 1 个附件，学生端可下载，邮件也会附带发送"}
+                </div>
               </div>
               <div className="row" style={{ alignItems: "stretch" }}>
                 <input className="input" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="标签，逗号分隔，例如：就业,实习,奖助" style={{ flex: 1 }} />
@@ -332,6 +358,7 @@ export function NotificationsPage() {
                             <span className="badge badgeWarn">未读 {item.stats.unread}</span>
                             {item.stats.failed ? <span className="badge badgeDanger">失败 {item.stats.failed}</span> : null}
                             {item.stats.partialFailed ? <span className="badge badgeWarn">部分失败 {item.stats.partialFailed}</span> : null}
+                            {item.attachmentName ? <span className="badge badgePrimary">有附件</span> : null}
                           </div>
                         </div>
                         <button className="btn" onClick={() => void openDetail(item.id)}>
@@ -359,6 +386,14 @@ export function NotificationsPage() {
                     <div className="muted" style={{ marginTop: 4, fontSize: 13 }}>
                       发布人：{selectedDetail.creator.name}，时间：{formatDateTime(selectedDetail.createdAt)}
                     </div>
+                    {selectedDetail.attachmentName ? (
+                      <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                        <span className="badge badgePrimary">附件：{selectedDetail.attachmentName}</span>
+                        <button className="btn" type="button" onClick={() => void downloadAttachment(selectedDetail.id, selectedDetail.attachmentName)}>
+                          下载附件
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                     {selectedDetail.channels.map((channel) => {
@@ -430,7 +465,12 @@ export function NotificationsPage() {
                           <span className={badgeForDelivery(item.deliveryStatus)}>{item.deliveryStatus}</span>
                           <span className={item.readStatus === "READ" ? "badge badgeOk" : "badge badgeWarn"}>{item.readStatus}</span>
                           {item.tags.map((tag) => <span key={tag} className="badge badgePrimary">{tag}</span>)}
-                          {item.attachmentUrl ? <a href={item.attachmentUrl} target="_blank" rel="noreferrer" className="btn">打开附件</a> : null}
+                          {item.attachmentName ? <span className="badge badgePrimary">有附件</span> : null}
+                          {item.attachmentUrl ? (
+                            <button className="btn" type="button" onClick={() => void downloadAttachment(item.id, item.attachmentName)}>
+                              下载附件
+                            </button>
+                          ) : null}
                         </div>
                         <div className="grid" style={{ gap: 6, marginTop: 10 }}>
                           {item.deliveries.map((delivery) => (
