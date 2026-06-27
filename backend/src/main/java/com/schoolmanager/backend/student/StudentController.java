@@ -3,10 +3,18 @@ package com.schoolmanager.backend.student;
 import com.schoolmanager.backend.common.ApiResponse;
 import com.schoolmanager.backend.profile.entity.Student;
 import com.schoolmanager.backend.security.CurrentUser;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -41,5 +49,35 @@ public class StudentController {
 					s.getClassName()
 			);
 		}
+	}
+
+	@PostMapping
+	@PreAuthorize("hasRole('LEADER')")
+	public ApiResponse<Void> createOrUpdateStudent(@Valid @RequestBody StudentSaveRequest request) {
+		studentService.saveStudent(request);
+		return ApiResponse.ok(null);
+	}
+
+	@PostMapping("/import")
+	@PreAuthorize("hasRole('LEADER')")
+	public ApiResponse<Void> importStudents(@RequestParam("file") MultipartFile file) {
+		studentService.importStudents(file);
+		return ApiResponse.ok(null);
+	}
+
+	@GetMapping("/export")
+	@PreAuthorize("hasAnyRole('LEADER','TEACHER','CADRE')")
+	public ResponseEntity<byte[]> exportStudents() {
+		List<Student> students;
+		if (currentUser.hasRole("LEADER")) {
+			students = studentService.listAllStudents();
+		} else {
+			students = studentService.listManagedStudents(currentUser.id());
+		}
+		byte[] data = studentService.exportStudents(students);
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"students.xlsx\"")
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.body(data);
 	}
 }
