@@ -65,6 +65,13 @@ public class StudentController {
 		return ApiResponse.ok(null);
 	}
 
+	@DeleteMapping("/{id}")
+	@PreAuthorize("hasRole('LEADER')")
+	public ApiResponse<Void> deleteStudent(@PathVariable("id") long id) {
+		studentService.deleteStudent(id);
+		return ApiResponse.ok(null);
+	}
+
 	@GetMapping("/export")
 	@PreAuthorize("hasAnyRole('LEADER','TEACHER','CADRE')")
 	public ResponseEntity<byte[]> exportStudents() {

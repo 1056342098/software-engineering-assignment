@@ -2,6 +2,8 @@ package com.schoolmanager.backend.student;
 
 import com.schoolmanager.backend.profile.entity.Student;
 import com.schoolmanager.backend.profile.repo.StudentRepository;
+import com.schoolmanager.backend.profile.repo.StudentProfileRepository;
+import com.schoolmanager.backend.profile.repo.StudentSensitiveRepository;
 import com.schoolmanager.backend.student.repo.ClassManagerRepository;
 import com.schoolmanager.backend.user.entity.SysRole;
 import com.schoolmanager.backend.user.entity.SysUser;
@@ -28,14 +30,19 @@ public class StudentService {
 	private final SysUserRepository sysUserRepository;
 	private final SysRoleRepository sysRoleRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final StudentProfileRepository studentProfileRepository;
+	private final StudentSensitiveRepository studentSensitiveRepository;
 
 	public StudentService(StudentRepository studentRepository, ClassManagerRepository classManagerRepository,
-			SysUserRepository sysUserRepository, SysRoleRepository sysRoleRepository, PasswordEncoder passwordEncoder) {
+			SysUserRepository sysUserRepository, SysRoleRepository sysRoleRepository, PasswordEncoder passwordEncoder,
+			StudentProfileRepository studentProfileRepository, StudentSensitiveRepository studentSensitiveRepository) {
 		this.studentRepository = studentRepository;
 		this.classManagerRepository = classManagerRepository;
 		this.sysUserRepository = sysUserRepository;
 		this.sysRoleRepository = sysRoleRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.studentProfileRepository = studentProfileRepository;
+		this.studentSensitiveRepository = studentSensitiveRepository;
 	}
 
 	public List<Student> listAllStudents() {
@@ -52,12 +59,25 @@ public class StudentService {
 
 	@Transactional
 	public void saveStudent(StudentSaveRequest req) {
-		SysUser user = sysUserRepository.findByLoginName(req.studentNo()).orElseGet(SysUser::new);
-		boolean isNew = user.getId() == null;
+		Student student = studentRepository.findByStudentNo(req.studentNo()).orElse(null);
+		SysUser user;
+		boolean isNewUser = false;
+		
+		if (student != null) {
+			user = student.getUser();
+			if (user == null) {
+				user = new SysUser();
+				isNewUser = true;
+			}
+		} else {
+			user = sysUserRepository.findByLoginName(req.studentNo()).orElseGet(SysUser::new);
+			isNewUser = user.getId() == null;
+			student = new Student();
+		}
 
-		user.setLoginName(req.studentNo());
+		user.setLoginName(user.getLoginName() == null ? req.studentNo() : user.getLoginName());
 		user.setRealName(req.realName());
-		if (isNew) {
+		if (isNewUser) {
 			user.setPasswordHash(passwordEncoder.encode("123456"));
 			user.setStatus((short) 1);
 			SysRole studentRole = sysRoleRepository.findByCode("STUDENT").orElseThrow();
@@ -66,24 +86,20 @@ public class StudentService {
 
 		SysUser savedUser = sysUserRepository.save(user);
 
-		Student student;
-		if (isNew) {
-			student = new Student();
-			student.setUser(savedUser);
-		} else {
-			student = studentRepository.findById(savedUser.getId()).orElseGet(() -> {
-				Student s = new Student();
-				s.setUser(savedUser);
-				return s;
-			});
-		}
-
+		student.setUser(savedUser);
 		student.setStudentNo(req.studentNo());
 		student.setMajor(req.major());
 		student.setGrade(req.grade());
 		student.setClassName(req.className());
 
 		studentRepository.save(student);
+	}
+
+	@Transactional
+	public void deleteStudent(long id) {
+		studentSensitiveRepository.findByStudent_Id(id).ifPresent(studentSensitiveRepository::delete);
+		studentProfileRepository.findFirstByStudent_Id(id).ifPresent(studentProfileRepository::delete);
+		studentRepository.deleteById(id);
 	}
 
 	@Transactional

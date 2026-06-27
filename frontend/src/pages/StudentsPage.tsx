@@ -104,6 +104,16 @@ export function StudentsPage() {
     }
   }
 
+  async function handleDelete(id: number) {
+    if (!confirm("确定要删除该学生吗？这将会删除学生的个人画像和敏感信息，并且无法恢复。")) return;
+    try {
+      await apiFetch(`/students/${id}`, { method: "DELETE" });
+      await refresh();
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
   return (
     <div className="grid">
       <div className="pageTitle">
@@ -132,9 +142,8 @@ export function StudentsPage() {
 
       <div className="grid" style={{ gap: 10 }}>
         {filtered.map((s) => (
-          <Link key={s.id} to={`/students/${s.id}`} style={{ textDecoration: "none" }}>
-            <div className="card">
-              <div className="cardBody" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div key={s.id} className="card">
+            <div className="cardBody" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <div style={{ fontWeight: 800, color: "var(--text)" }}>{s.realName ?? "未命名"}</div>
                   <div className="row" style={{ marginTop: 6, gap: 6 }}>
@@ -145,10 +154,27 @@ export function StudentsPage() {
                     {s.grade != null ? <span className="badge">{s.grade}</span> : null}
                   </div>
                 </div>
-                <span className="badge badgePrimary">查看详情</span>
+                <div className="row" style={{ gap: 8 }}>
+                  <Link to={`/students/${s.id}`} style={{ textDecoration: "none" }}>
+                    <span className="badge badgePrimary">查看详情</span>
+                  </Link>
+                  {hasRole("LEADER") && (
+                    <span 
+                      className="badge badgeWarn" 
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void handleDelete(s.id);
+                      }}
+                    >
+                      删除
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
         {filtered.length === 0 ? <div className="muted">暂无学生数据或无权限查看。</div> : null}
       </div>
