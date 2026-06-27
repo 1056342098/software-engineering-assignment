@@ -49,6 +49,14 @@ public class ProfileController {
         return ApiResponse.ok(null);
     }
 
+    @PutMapping("/students/{studentId}/public")
+    @PreAuthorize("hasAnyRole('LEADER','TEACHER')")
+    public ApiResponse<Void> updateStudentPublic(@PathVariable long studentId,
+            @NotNull @RequestBody Map<String, Object> body) {
+        profileService.upsertStudentPublicProfile(currentUser.id(), studentId, body);
+        return ApiResponse.ok(null);
+    }
+
     @PutMapping("/students/{studentId}/sensitive")
     public ApiResponse<Void> updateSensitive(@PathVariable long studentId,
             @NotNull @RequestBody Map<String, Object> body) {

@@ -42,6 +42,12 @@ export function StudentDetailPage() {
     delayInfo: ""
   });
 
+  const [showPublicModal, setShowPublicModal] = useState(false);
+  const [publicForm, setPublicForm] = useState({
+    competitions: [] as Competition[],
+    practices: [] as Practice[]
+  });
+
   async function refresh() {
     if (!studentId) return;
     try {
@@ -80,6 +86,27 @@ export function StudentDetailPage() {
         body: JSON.stringify(sensitiveForm),
       });
       setShowSensitiveModal(false);
+      await refresh();
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
+  function handleEditPublic() {
+    setPublicForm({
+      competitions: data?.public?.competitions ? JSON.parse(JSON.stringify(data.public.competitions)) : [],
+      practices: data?.public?.practices ? JSON.parse(JSON.stringify(data.public.practices)) : []
+    });
+    setShowPublicModal(true);
+  }
+
+  async function handleSavePublic() {
+    try {
+      await apiFetch(`/profile/students/${studentId}/public`, {
+        method: "PUT",
+        body: JSON.stringify(publicForm),
+      });
+      setShowPublicModal(false);
       await refresh();
     } catch (e) {
       showError((e as Error).message);
@@ -162,7 +189,12 @@ export function StudentDetailPage() {
           <section className="card" style={{ gridColumn: "1 / -1" }}>
             <div className="cardHeader">
               <div style={{ fontWeight: 600 }}>公开画像</div>
-              <span className="badge">{Object.keys(data.public ?? {}).length} 项</span>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="badge">{Object.keys(data.public ?? {}).length} 项</span>
+                {hasRole("LEADER", "TEACHER") && (
+                  <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={handleEditPublic}>编辑</button>
+                )}
+              </div>
             </div>
             <div className="cardBody">
               <div className="twoCol">
@@ -277,6 +309,68 @@ export function StudentDetailPage() {
               <div className="row" style={{ justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button className="btn" onClick={() => setShowSensitiveModal(false)}>取消</button>
                 <button className="btn btnPrimary" onClick={() => void handleSaveSensitive()}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPublicModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="card" style={{ width: 600, maxWidth: "90%", maxHeight: "90vh", overflow: "auto" }}>
+            <div className="cardBody grid" style={{ gap: 12 }}>
+              <h3>编辑公开画像</h3>
+              
+              <div style={{ fontWeight: 600, marginTop: 10 }}>科研/竞赛</div>
+              {publicForm.competitions.map((c, i) => (
+                <div key={i} className="row" style={{ gap: 8 }}>
+                  <input className="input" style={{ flex: 2 }} placeholder="名称" value={c.name ?? ""} onChange={e => {
+                    const newComps = [...publicForm.competitions];
+                    newComps[i].name = e.target.value;
+                    setPublicForm({ ...publicForm, competitions: newComps });
+                  }} />
+                  <input className="input" style={{ flex: 1 }} placeholder="级别" value={c.level ?? ""} onChange={e => {
+                    const newComps = [...publicForm.competitions];
+                    newComps[i].level = e.target.value;
+                    setPublicForm({ ...publicForm, competitions: newComps });
+                  }} />
+                  <input className="input" style={{ flex: 1 }} type="number" placeholder="年份" value={c.year ?? ""} onChange={e => {
+                    const newComps = [...publicForm.competitions];
+                    newComps[i].year = Number(e.target.value) || undefined;
+                    setPublicForm({ ...publicForm, competitions: newComps });
+                  }} />
+                  <button className="btn" onClick={() => {
+                    const newComps = publicForm.competitions.filter((_, idx) => idx !== i);
+                    setPublicForm({ ...publicForm, competitions: newComps });
+                  }}>删</button>
+                </div>
+              ))}
+              <button className="btn" style={{ alignSelf: "flex-start" }} onClick={() => setPublicForm({ ...publicForm, competitions: [...publicForm.competitions, {}] })}>+ 添加科研/竞赛</button>
+
+              <div style={{ fontWeight: 600, marginTop: 10 }}>社会实践</div>
+              {publicForm.practices.map((p, i) => (
+                <div key={i} className="row" style={{ gap: 8 }}>
+                  <input className="input" style={{ flex: 2 }} placeholder="名称" value={p.name ?? ""} onChange={e => {
+                    const newPracs = [...publicForm.practices];
+                    newPracs[i].name = e.target.value;
+                    setPublicForm({ ...publicForm, practices: newPracs });
+                  }} />
+                  <input className="input" style={{ flex: 1 }} type="number" placeholder="小时数" value={p.hours ?? ""} onChange={e => {
+                    const newPracs = [...publicForm.practices];
+                    newPracs[i].hours = Number(e.target.value) || undefined;
+                    setPublicForm({ ...publicForm, practices: newPracs });
+                  }} />
+                  <button className="btn" onClick={() => {
+                    const newPracs = publicForm.practices.filter((_, idx) => idx !== i);
+                    setPublicForm({ ...publicForm, practices: newPracs });
+                  }}>删</button>
+                </div>
+              ))}
+              <button className="btn" style={{ alignSelf: "flex-start" }} onClick={() => setPublicForm({ ...publicForm, practices: [...publicForm.practices, {}] })}>+ 添加社会实践</button>
+
+              <div className="row" style={{ justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
+                <button className="btn" onClick={() => setShowPublicModal(false)}>取消</button>
+                <button className="btn btnPrimary" onClick={() => void handleSavePublic()}>保存</button>
               </div>
             </div>
           </div>

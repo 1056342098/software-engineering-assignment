@@ -154,6 +154,20 @@ public class ProfileService {
 	}
 
 	@Transactional
+	public void upsertStudentPublicProfile(long operatorId, long studentId, Map<String, Object> publicPart) {
+		Student student = studentRepository.findById(studentId).orElseThrow(() -> new ApiException(404, "未找到该学生"));
+		StudentProfile sp = profileRepository.findFirstByStudent_Id(studentId).orElseGet(StudentProfile::new);
+		sp.setStudent(student);
+		try {
+			sp.setPublicJson(objectMapper.writeValueAsString(publicPart));
+		} catch (Exception e) {
+			throw new ApiException(400, "公开信息格式无效");
+		}
+		profileRepository.save(sp);
+		opLogService.log(operatorId, "STUDENT_PROFILE_PUBLIC_UPSERT", "student_profile", sp.getId(), Map.of("studentId", studentId));
+	}
+
+	@Transactional
 	public void upsertSensitive(long operatorId, long studentId, Map<String, Object> sensitivePart) {
 		Student student = studentRepository.findById(studentId)
 				.orElseThrow(() -> new ApiException(404, "未找到该学生"));
