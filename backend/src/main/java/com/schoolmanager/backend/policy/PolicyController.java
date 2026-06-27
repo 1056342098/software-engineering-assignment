@@ -51,15 +51,20 @@ public class PolicyController {
 	public ApiResponse<PolicyDocDto> upload(
 			@RequestParam("title") @NotBlank String title,
 			@RequestParam(value = "category", required = false) String category,
+			@RequestParam(value = "versionLabel", required = false) String versionLabel,
+			@RequestParam(value = "summaryText", required = false) String summaryText,
+			@RequestParam(value = "standardAnswer", required = false) String standardAnswer,
 			@RequestParam("file") MultipartFile file) {
-		PolicyDoc doc = policyService.upload(currentUser.id(), title, category, file);
+		PolicyDoc doc = policyService.upload(currentUser.id(), title, category, versionLabel, summaryText, standardAnswer,
+				file);
 		return ApiResponse.ok(PolicyDocDto.from(doc));
 	}
 
 	@PutMapping("/docs/{docId}")
 	@PreAuthorize("hasAnyRole('TEACHER','LEADER')")
 	public ApiResponse<PolicyDocDto> update(@PathVariable long docId, @Valid @RequestBody UpdateReq req) {
-		PolicyDoc doc = policyService.updateMeta(currentUser.id(), docId, req.title(), req.category());
+		PolicyDoc doc = policyService.updateMeta(currentUser.id(), docId, req.title(), req.category(),
+				req.versionLabel(), req.summaryText(), req.standardAnswer());
 		return ApiResponse.ok(PolicyDocDto.from(doc));
 	}
 
@@ -78,16 +83,17 @@ public class PolicyController {
 				.body(file);
 	}
 
-	public record PolicyDocDto(Long id, String title, String category, String fileName, String status, Long uploaderId,
-			String uploaderName) {
+	public record PolicyDocDto(Long id, String title, String category, String versionLabel, String summaryText,
+			String standardAnswer, String fileName, String status, Long uploaderId, String uploaderName) {
 		public static PolicyDocDto from(PolicyDoc d) {
 			Long uid = d.getUploader() == null ? null : d.getUploader().getId();
 			String name = d.getUploader() == null ? null : d.getUploader().getRealName();
-			return new PolicyDocDto(d.getId(), d.getTitle(), d.getCategory(), d.getFileName(), d.getStatus(), uid,
-					name);
+			return new PolicyDocDto(d.getId(), d.getTitle(), d.getCategory(), d.getVersionLabel(), d.getSummaryText(),
+					d.getStandardAnswer(), d.getFileName(), d.getStatus(), uid, name);
 		}
 	}
 
-	public record UpdateReq(@NotNull @NotBlank String title, String category) {
+	public record UpdateReq(@NotNull @NotBlank String title, String category, String versionLabel, String summaryText,
+			String standardAnswer) {
 	}
 }

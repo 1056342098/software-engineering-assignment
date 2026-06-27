@@ -230,3 +230,95 @@ button {
     grid-template-columns: 120px 1fr;
   }
 }
+
+.markdownAnswer {
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.markdownAnswer > :first-child {
+  margin-top: 0;
+}
+
+.markdownAnswer > :last-child {
+  margin-bottom: 0;
+}
+
+.markdownAnswer p,
+.markdownAnswer ul,
+.markdownAnswer ol,
+.markdownAnswer blockquote,
+.markdownAnswer pre,
+.markdownAnswer table {
+  margin: 0 0 12px;
+}
+
+.markdownAnswer ul,
+.markdownAnswer ol {
+  padding-left: 22px;
+}
+
+.markdownAnswer li + li {
+  margin-top: 4px;
+}
+
+.markdownAnswer blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.markdownAnswer code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #eef2ff;
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+}
+
+.markdownAnswer pre {
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: #111827;
+  color: #f9fafb;
+}
+
+.markdownAnswer pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.markdownAnswer table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdownAnswer th,
+.markdownAnswer td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdownAnswer th {
+  background: var(--surface-2);
+}
+
+.typingCursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  border-right: 2px solid var(--primary);
+  animation: typing-caret 0.9s steps(1) infinite;
+}
+
+@keyframes typing-caret {
+  50% {
+    opacity: 0;
+  }
+}

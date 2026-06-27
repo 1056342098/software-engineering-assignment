@@ -168,6 +168,7 @@ export function HomePage() {
 
       <div className="row" style={{ gap: 12 }}>
         <Card title="政策库" to="/policy" desc="老师上传政策文档（≤30MB），系统抽取文本并支持检索。" />
+        <Card title="通知中心" to="/notifications" desc="老师按标签和渠道推送通知，学生查看收件箱并标记已读。" />
         {auth.hasRole("STUDENT") ? <Card title="党团事务" to="/approvals" desc="入党/入团申请提交与进度追踪。" /> : null}
         {auth.hasRole("TEACHER", "LEADER") ? <Card title="审批中心" to="/pending" desc="老师处理待办，支持撤回/重批窗口。" /> : null}
         <Card title="我的画像" to="/profile" desc="基础信息 + 公开画像；敏感信息按角色脱敏。" />

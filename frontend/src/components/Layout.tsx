@@ -8,6 +8,7 @@ export function Layout() {
   const items: Array<{ to: string; label: string; show?: boolean }> = [
     { to: "/", label: "首页", show: true },
     { to: "/policy", label: "政策库", show: true },
+    { to: "/notifications", label: "通知中心", show: auth.hasRole("STUDENT", "TEACHER", "LEADER", "CADRE") },
     { to: "/approvals", label: "党团事务", show: auth.hasRole("STUDENT") },
     { to: "/selftest", label: "党团理论自测", show: auth.hasRole("STUDENT") },
     { to: "/timeline-admin", label: "时间线配置", show: auth.hasRole("LEADER", "ADMIN") },

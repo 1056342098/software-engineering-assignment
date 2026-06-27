@@ -2,6 +2,7 @@ import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { apiFetch } from "../api";
+import { useAuth } from "../auth";
 
 type Competition = { name?: string; level?: string; year?: number };
 type Practice = { name?: string; hours?: number };
@@ -25,26 +26,94 @@ type ProfileResp = {
   sensitive: { masked?: boolean } | null | Record<string, unknown>;
 };
 
+type NotificationEmailSettingsResp = {
+  recipientEmail?: string | null;
+  sender: {
+    available: boolean;
+    configured: boolean;
+    senderEmail?: string | null;
+    senderName?: string | null;
+    smtpHost?: string | null;
+    smtpPort?: number | null;
+    smtpUsername?: string | null;
+    smtpPasswordConfigured: boolean;
+    starttlsEnabled: boolean;
+    sslEnabled: boolean;
+  };
+};
+
+type SenderForm = {
+  senderEmail: string;
+  senderName: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
+  starttlsEnabled: boolean;
+  sslEnabled: boolean;
+};
+
 type CreditModule = { name: string; required: number; earned: number };
 type CreditModuleDraft = { name: string; required: number | string; earned: number | string };
 
 export function ProfilePage() {
+  const auth = useAuth();
+  const canConfigureSender = auth.hasRole("TEACHER", "LEADER", "CADRE");
   const [data, setData] = useState<ProfileResp | null>(null);
+  const [emailSettings, setEmailSettings] = useState<NotificationEmailSettingsResp | null>(null);
+  const [recipientEmailDraft, setRecipientEmailDraft] = useState("");
+  const [recipientSaving, setRecipientSaving] = useState(false);
+  const [senderSaving, setSenderSaving] = useState(false);
+  const [senderForm, setSenderForm] = useState<SenderForm>({
+    senderEmail: "",
+    senderName: "",
+    smtpHost: "",
+    smtpPort: "587",
+    smtpUsername: "",
+    smtpPassword: "",
+    starttlsEnabled: true,
+    sslEnabled: false,
+  });
   const [saving, setSaving] = useState(false);
   const [creditModules, setCreditModules] = useState<CreditModule[]>([]);
   const [creditEditOpen, setCreditEditOpen] = useState(false);
   const [creditDraft, setCreditDraft] = useState<CreditModuleDraft[]>([]);
 
+  async function refreshData() {
+    try {
+      const [profile, settings] = await Promise.all([
+        apiFetch<ProfileResp>("/profile/me", { method: "GET" }),
+        apiFetch<NotificationEmailSettingsResp>("/notification-email/me", { method: "GET" }),
+      ]);
+      setData(profile);
+      setEmailSettings(settings);
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
   useEffect(() => {
-        void apiFetch<ProfileResp>("/profile/me", { method: "GET" })
-      .then(setData)
-      .catch((e) => showError((e as Error).message));
+    void refreshData();
   }, []);
 
   useEffect(() => {
     const loaded = readCreditModules(data?.public?.credits);
     setCreditModules(loaded ?? []);
   }, [data]);
+
+  useEffect(() => {
+    setRecipientEmailDraft(emailSettings?.recipientEmail ?? "");
+    setSenderForm({
+      senderEmail: emailSettings?.sender?.senderEmail ?? "",
+      senderName: emailSettings?.sender?.senderName ?? "",
+      smtpHost: emailSettings?.sender?.smtpHost ?? "",
+      smtpPort: emailSettings?.sender?.smtpPort != null ? String(emailSettings.sender.smtpPort) : "587",
+      smtpUsername: emailSettings?.sender?.smtpUsername ?? "",
+      smtpPassword: "",
+      starttlsEnabled: emailSettings?.sender?.starttlsEnabled ?? true,
+      sslEnabled: emailSettings?.sender?.sslEnabled ?? false,
+    });
+  }, [emailSettings]);
 
   const comps = data?.public?.competitions ?? [];
   const practices = data?.public?.practices ?? [];
@@ -88,6 +157,49 @@ export function ProfilePage() {
     return { totalRequired, totalEarned, remaining, pct };
   }, [creditDraft]);
 
+  async function saveRecipientEmail() {
+    setRecipientSaving(true);
+    try {
+      const settings = await apiFetch<NotificationEmailSettingsResp>("/notification-email/me/recipient", {
+        method: "PUT",
+        body: JSON.stringify({
+          recipientEmail: recipientEmailDraft.trim() || null,
+        }),
+      });
+      setEmailSettings(settings);
+      setData((prev) => (prev ? { ...prev, email: settings.recipientEmail ?? null } : prev));
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setRecipientSaving(false);
+    }
+  }
+
+  async function saveSenderConfig() {
+    setSenderSaving(true);
+    try {
+      const settings = await apiFetch<NotificationEmailSettingsResp>("/notification-email/me/sender", {
+        method: "PUT",
+        body: JSON.stringify({
+          senderEmail: senderForm.senderEmail.trim(),
+          senderName: senderForm.senderName.trim() || null,
+          smtpHost: senderForm.smtpHost.trim(),
+          smtpPort: Number(senderForm.smtpPort),
+          smtpUsername: senderForm.smtpUsername.trim(),
+          smtpPassword: senderForm.smtpPassword.trim() || null,
+          starttlsEnabled: senderForm.starttlsEnabled,
+          sslEnabled: senderForm.sslEnabled,
+        }),
+      });
+      setEmailSettings(settings);
+      setSenderForm((prev) => ({ ...prev, smtpPassword: "" }));
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setSenderSaving(false);
+    }
+  }
+
   return (
     <div className="grid">
       <div className="pageTitle">
@@ -121,10 +233,126 @@ export function ProfilePage() {
                 <div className="kvKey">班级</div>
                 <div className="kvVal">{data.className ?? "-"}</div>
                 <div className="kvKey">邮箱</div>
-                <div className="kvVal">{data.email ?? "-"}</div>
+                <div className="kvVal">
+                  <div className="grid" style={{ gap: 8 }}>
+                    <div className="row" style={{ alignItems: "stretch", flexWrap: "nowrap" }}>
+                      <input
+                        className="input"
+                        type="email"
+                        value={recipientEmailDraft}
+                        onChange={(e) => setRecipientEmailDraft(e.target.value)}
+                        placeholder={data.kind === "STUDENT" ? "用于接收邮件通知的邮箱" : "用于接收系统邮件提醒的邮箱"}
+                        style={{ flex: 1, minWidth: 0 }}
+                      />
+                      <button className="btn btnPrimary" onClick={() => void saveRecipientEmail()} disabled={recipientSaving}>
+                        {recipientSaving ? "保存中…" : "保存邮箱"}
+                      </button>
+                    </div>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {data.kind === "STUDENT"
+                        ? "这里就是你的个人邮箱，也是邮件通知的收件地址。"
+                        : "这里就是你的个人邮箱，也可作为系统通知联系邮箱。"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
+
+          {canConfigureSender ? (
+            <section className="card">
+              <div className="cardHeader">
+                <div style={{ fontWeight: 600 }}>SMTP 发件配置</div>
+                <span className={emailSettings?.sender?.configured ? "badge badgeOk" : "badge badgeWarn"}>
+                  {emailSettings?.sender?.configured ? "已配置" : "未配置"}
+                </span>
+              </div>
+              <div className="cardBody">
+                <div className="grid" style={{ gap: 10 }}>
+                  <div className="row" style={{ alignItems: "stretch" }}>
+                    <input
+                      className="input"
+                      type="email"
+                      value={senderForm.senderEmail}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, senderEmail: e.target.value }))}
+                      placeholder="发件邮箱"
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                    <input
+                      className="input"
+                      value={senderForm.senderName}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, senderName: e.target.value }))}
+                      placeholder="发件人名称（可选）"
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                  </div>
+                  <div className="row" style={{ alignItems: "stretch" }}>
+                    <input
+                      className="input"
+                      value={senderForm.smtpHost}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, smtpHost: e.target.value }))}
+                      placeholder="SMTP 主机，例如 smtp.qq.com"
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      max="65535"
+                      value={senderForm.smtpPort}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, smtpPort: e.target.value }))}
+                      placeholder="端口"
+                      style={{ width: 160 }}
+                    />
+                  </div>
+                  <div className="row" style={{ alignItems: "stretch" }}>
+                    <input
+                      className="input"
+                      value={senderForm.smtpUsername}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, smtpUsername: e.target.value }))}
+                      placeholder="SMTP 用户名"
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                    <input
+                      className="input"
+                      type="password"
+                      value={senderForm.smtpPassword}
+                      onChange={(e) => setSenderForm((prev) => ({ ...prev, smtpPassword: e.target.value }))}
+                      placeholder={emailSettings?.sender?.smtpPasswordConfigured ? "留空则保持原密码" : "SMTP 密码或授权码"}
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                  </div>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <label className="badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={senderForm.starttlsEnabled}
+                        onChange={(e) => setSenderForm((prev) => ({ ...prev, starttlsEnabled: e.target.checked }))}
+                      />
+                      STARTTLS
+                    </label>
+                    <label className="badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={senderForm.sslEnabled}
+                        onChange={(e) => setSenderForm((prev) => ({ ...prev, sslEnabled: e.target.checked }))}
+                      />
+                      SSL
+                    </label>
+                    {emailSettings?.sender?.smtpPasswordConfigured ? <span className="badge badgePrimary">已保存密码</span> : null}
+                  </div>
+                  <div className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      发布通知时，邮件渠道会使用这里的 SMTP 配置直接发出；密码以加密形式存储。
+                    </div>
+                    <button className="btn btnPrimary" onClick={() => void saveSenderConfig()} disabled={senderSaving}>
+                      {senderSaving ? "保存中…" : "保存发件配置"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="card">
             <div className="cardHeader">

@@ -1,8 +1,6 @@
 package com.schoolmanager.backend.qa;
 
 import com.schoolmanager.backend.common.ApiResponse;
-import com.schoolmanager.backend.policy.repo.PolicyDocChunkRepository;
-import com.schoolmanager.backend.policy.repo.PolicyDocRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,28 +13,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/qa")
 public class QaController {
-	private final PolicyDocChunkRepository chunkRepository;
-	private final PolicyDocRepository docRepository;
+	private final QaService qaService;
 
-	public QaController(PolicyDocChunkRepository chunkRepository, PolicyDocRepository docRepository) {
-		this.chunkRepository = chunkRepository;
-		this.docRepository = docRepository;
+	public QaController(QaService qaService) {
+		this.qaService = qaService;
 	}
 
 	@PostMapping("/ask")
 	public ApiResponse<AskResponse> ask(@Valid @RequestBody AskRequest req) {
-		int limit = Math.min(Math.max(req.getTopK() == null ? 5 : req.getTopK(), 1), 10);
-		List<PolicyDocChunkRepository.PolicyChunkSearchRow> hits = chunkRepository.searchTop(req.getQuestion())
-				.stream()
-				.limit(limit)
+		QaService.AskResult result = qaService.ask(req.getQuestion(), req.getTopK());
+		List<Source> sources = result.sources().stream()
+				.map(source -> new Source(source.docId(), source.title(), source.chunkNo(), source.snippet(),
+						source.fileName(), source.category(), source.score()))
 				.toList();
-		if (hits.isEmpty()) {
-			return ApiResponse.ok(new AskResponse("未找到相关政策条目，请尝试更换关键词。", null));
-		}
-		var best = hits.get(0);
-		var doc = docRepository.findById(best.getDocId()).orElse(null);
-		Source source = doc == null ? null : new Source(doc.getId(), doc.getTitle(), best.getChunkNo());
-		return ApiResponse.ok(new AskResponse(best.getChunkText(), source));
+		return ApiResponse.ok(new AskResponse(result.answer(), sources, result.grounded(), result.strategy()));
 	}
 
 	public static class AskRequest {
@@ -61,9 +51,10 @@ public class QaController {
 		}
 	}
 
-	public record AskResponse(String answer, Source source) {
+	public record AskResponse(String answer, List<Source> sources, boolean grounded, String strategy) {
 	}
 
-	public record Source(Long docId, String title, Integer chunkNo) {
+	public record Source(Long docId, String title, Integer chunkNo, String snippet, String fileName, String category,
+			Double score) {
 	}
 }

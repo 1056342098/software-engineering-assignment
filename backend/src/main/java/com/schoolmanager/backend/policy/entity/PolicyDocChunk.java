@@ -27,6 +27,9 @@ public class PolicyDocChunk {
 	@Column(name = "chunk_text", nullable = false, columnDefinition = "longtext")
 	private String chunkText;
 
+	@Column(name = "search_text", nullable = false, columnDefinition = "longtext")
+	private String searchText;
+
 	public Long getId() {
 		return id;
 	}
@@ -53,5 +56,13 @@ public class PolicyDocChunk {
 
 	public void setChunkText(String chunkText) {
 		this.chunkText = chunkText;
+	}
+
+	public String getSearchText() {
+		return searchText;
+	}
+
+	public void setSearchText(String searchText) {
+		this.searchText = searchText;
 	}
 }

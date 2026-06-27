@@ -33,6 +33,11 @@ services:
       APP_AES_KEY_BASE64: av36BYZ70AHlgYpKx4HFwEmgUk2yAhSv7dP2cYkY3cQ=
       APP_POLICY_DIR: /data/policy-files
       APP_APPROVAL_DIR: /data/approval-files
+      APP_LLM_ENABLED: "true"
+      APP_LLM_API_KEY: "sk-2bec07bb971a47fcbe4a361b445a3a4e"
+      APP_LLM_BASE_URL: "https://api.deepseek.com"
+      APP_LLM_MODEL: "deepseek-v4-flash"
+      APP_LLM_ENDPOINT: "/v1/chat/completions"
     ports:
       - "8080:8080"
     volumes:

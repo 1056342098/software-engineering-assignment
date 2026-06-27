@@ -26,11 +26,20 @@ public class PolicyDoc {
 	@Column(name = "category", length = 64)
 	private String category;
 
+	@Column(name = "version_label", length = 32)
+	private String versionLabel;
+
 	@Column(name = "file_name", length = 255)
 	private String fileName;
 
 	@Column(name = "file_path", length = 1024)
 	private String filePath;
+
+	@Column(name = "summary_text", columnDefinition = "text")
+	private String summaryText;
+
+	@Column(name = "standard_answer", columnDefinition = "text")
+	private String standardAnswer;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "uploader_id", nullable = false)
@@ -79,6 +88,30 @@ public class PolicyDoc {
 
 	public void setFilePath(String filePath) {
 		this.filePath = filePath;
+	}
+
+	public String getVersionLabel() {
+		return versionLabel;
+	}
+
+	public void setVersionLabel(String versionLabel) {
+		this.versionLabel = versionLabel;
+	}
+
+	public String getSummaryText() {
+		return summaryText;
+	}
+
+	public void setSummaryText(String summaryText) {
+		this.summaryText = summaryText;
+	}
+
+	public String getStandardAnswer() {
+		return standardAnswer;
+	}
+
+	public void setStandardAnswer(String standardAnswer) {
+		this.standardAnswer = standardAnswer;
 	}
 
 	public SysUser getUploader() {
