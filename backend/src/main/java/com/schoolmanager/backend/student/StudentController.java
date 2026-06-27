@@ -54,8 +54,13 @@ public class StudentController {
 	}
 
 	@PostMapping
-	@PreAuthorize("hasAnyRole('LEADER','TEACHER')")
+	@PreAuthorize("hasAnyRole('LEADER','TEACHER','STUDENT')")
 	public ApiResponse<Void> createOrUpdateStudent(@Valid @RequestBody StudentSaveRequest request) {
+		if (currentUser.hasRole("STUDENT")) {
+			if (request.id() == null || request.id() != currentUser.id()) {
+				throw new com.schoolmanager.backend.common.ApiException(403, "只能修改自己的基本信息");
+			}
+		}
 		studentService.saveStudent(request);
 		return ApiResponse.ok(null);
 	}

@@ -79,6 +79,24 @@ export function ProfilePage() {
   const [creditEditOpen, setCreditEditOpen] = useState(false);
   const [creditDraft, setCreditDraft] = useState<CreditModuleDraft[]>([]);
 
+  const [showSensitiveModal, setShowSensitiveModal] = useState(false);
+  const [sensitiveForm, setSensitiveForm] = useState({
+    idCardNo: "",
+    hukouAddr: "",
+    hometown: "",
+    tutor: "",
+    delayInfo: ""
+  });
+
+  const [showBasicModal, setShowBasicModal] = useState(false);
+  const [basicForm, setBasicForm] = useState({
+    studentNo: "",
+    realName: "",
+    major: "",
+    grade: "",
+    className: ""
+  });
+
   async function refreshData() {
     try {
       const [profile, settings] = await Promise.all([
@@ -200,6 +218,60 @@ export function ProfilePage() {
     }
   }
 
+  function handleEditSensitive() {
+    const s = data?.sensitive as Record<string, string> | undefined;
+    setSensitiveForm({
+      idCardNo: s?.idCardNo ?? "",
+      hukouAddr: s?.hukouAddr ?? "",
+      hometown: s?.hometown ?? "",
+      tutor: s?.tutor ?? "",
+      delayInfo: s?.delayInfo ?? ""
+    });
+    setShowSensitiveModal(true);
+  }
+
+  async function handleSaveSensitive() {
+    try {
+      await apiFetch(`/profile/students/${data?.studentId}/sensitive`, {
+        method: "PUT",
+        body: JSON.stringify(sensitiveForm),
+      });
+      setShowSensitiveModal(false);
+      await refreshData();
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
+  function handleEditBasic() {
+    setBasicForm({
+      studentNo: data?.studentNo ?? "",
+      realName: data?.realName ?? "",
+      major: data?.major ?? "",
+      grade: data?.grade?.toString() ?? "",
+      className: data?.className ?? ""
+    });
+    setShowBasicModal(true);
+  }
+
+  async function handleSaveBasic() {
+    try {
+      const gradeInt = parseInt(basicForm.grade);
+      await apiFetch("/students", {
+        method: "POST",
+        body: JSON.stringify({
+          id: data?.studentId,
+          ...basicForm,
+          grade: isNaN(gradeInt) ? null : gradeInt,
+        }),
+      });
+      setShowBasicModal(false);
+      await refreshData();
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
   return (
     <div className="grid">
       <div className="pageTitle">
@@ -216,7 +288,12 @@ export function ProfilePage() {
           <section className="card">
             <div className="cardHeader">
               <div style={{ fontWeight: 600 }}>基本信息</div>
-              <span className="badge badgePrimary">{data.studentId != null ? `studentId=${data.studentId}` : `userId=${data.userId ?? "-"}`}</span>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="badge badgePrimary">{data.studentId != null ? `studentId=${data.studentId}` : `userId=${data.userId ?? "-"}`}</span>
+                {data.kind === "STUDENT" && (
+                  <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={handleEditBasic}>编辑</button>
+                )}
+              </div>
             </div>
             <div className="cardBody">
               <div className="kvs">
@@ -357,7 +434,12 @@ export function ProfilePage() {
           <section className="card">
             <div className="cardHeader">
               <div style={{ fontWeight: 600 }}>敏感信息</div>
-              {sensitiveMasked ? <span className="badge badgeWarn">已脱敏</span> : <span className="badge badgeOk">可见</span>}
+              <div className="row" style={{ gap: 8 }}>
+                {sensitiveMasked ? <span className="badge badgeWarn">已脱敏</span> : <span className="badge badgeOk">可见</span>}
+                {data.kind === "STUDENT" && !sensitiveMasked && (
+                  <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={handleEditSensitive}>编辑</button>
+                )}
+              </div>
             </div>
             <div className="cardBody">
               {data.sensitive == null ? (
@@ -604,6 +686,44 @@ export function ProfilePage() {
               </div>
             </div>
           ) : null}
+
+          {showSensitiveModal && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="card" style={{ width: 400, maxWidth: "90%" }}>
+                <div className="cardBody grid" style={{ gap: 12 }}>
+                  <h3>编辑敏感信息</h3>
+                  <input className="input" placeholder="身份证号" value={sensitiveForm.idCardNo} onChange={(e) => setSensitiveForm({ ...sensitiveForm, idCardNo: e.target.value })} />
+                  <input className="input" placeholder="户口所在地" value={sensitiveForm.hukouAddr} onChange={(e) => setSensitiveForm({ ...sensitiveForm, hukouAddr: e.target.value })} />
+                  <input className="input" placeholder="生源地" value={sensitiveForm.hometown} onChange={(e) => setSensitiveForm({ ...sensitiveForm, hometown: e.target.value })} />
+                  <input className="input" placeholder="导师/辅导员" value={sensitiveForm.tutor} onChange={(e) => setSensitiveForm({ ...sensitiveForm, tutor: e.target.value })} />
+                  <textarea className="input" placeholder="延毕/学籍异动信息" value={sensitiveForm.delayInfo} onChange={(e) => setSensitiveForm({ ...sensitiveForm, delayInfo: e.target.value })} rows={3} />
+                  <div className="row" style={{ justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                    <button className="btn" onClick={() => setShowSensitiveModal(false)}>取消</button>
+                    <button className="btn btnPrimary" onClick={() => void handleSaveSensitive()}>保存</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showBasicModal && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="card" style={{ width: 400, maxWidth: "90%" }}>
+                <div className="cardBody grid" style={{ gap: 12 }}>
+                  <h3>编辑基本信息</h3>
+                  <input className="input" placeholder="学号" value={basicForm.studentNo} onChange={(e) => setBasicForm({ ...basicForm, studentNo: e.target.value })} />
+                  <input className="input" placeholder="姓名" value={basicForm.realName} onChange={(e) => setBasicForm({ ...basicForm, realName: e.target.value })} />
+                  <input className="input" placeholder="专业" value={basicForm.major} onChange={(e) => setBasicForm({ ...basicForm, major: e.target.value })} />
+                  <input className="input" placeholder="年级" value={basicForm.grade} onChange={(e) => setBasicForm({ ...basicForm, grade: e.target.value })} />
+                  <input className="input" placeholder="班级" value={basicForm.className} onChange={(e) => setBasicForm({ ...basicForm, className: e.target.value })} />
+                  <div className="row" style={{ justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                    <button className="btn" onClick={() => setShowBasicModal(false)}>取消</button>
+                    <button className="btn btnPrimary" onClick={() => void handleSaveBasic()}>保存</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
