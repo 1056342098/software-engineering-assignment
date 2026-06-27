@@ -140,7 +140,7 @@ public class StudentService {
 				String className = getCellValueAsString(row.getCell(4));
 
 				try {
-					saveStudent(new StudentSaveRequest(studentNo, realName, major, grade, className));
+					saveStudent(new StudentSaveRequest(null, studentNo, realName, major, grade, className));
 					successCount++;
 				} catch (Exception e) {
 					errors.append(String.format("第%d行：保存失败(%s)；", i + 1, e.getMessage()));
