@@ -127,12 +127,15 @@ public class StudentService {
 
 			if (errors.length() > 0) {
 				if (successCount == 0) {
-					throw new RuntimeException("导入全部失败: " + errors.toString());
+					throw new com.schoolmanager.backend.common.ApiException(400, "导入全部失败: " + errors.toString());
 				} else {
-					throw new RuntimeException("部分导入成功 (" + successCount + "条)。失败记录: " + errors.toString());
+					throw new com.schoolmanager.backend.common.ApiException(400, "部分导入成功 (" + successCount + "条)。失败记录: " + errors.toString());
 				}
 			}
 		} catch (Exception e) {
+			if (e instanceof com.schoolmanager.backend.common.ApiException) {
+				throw (com.schoolmanager.backend.common.ApiException) e;
+			}
 			if (e instanceof RuntimeException) {
 				throw (RuntimeException) e;
 			}

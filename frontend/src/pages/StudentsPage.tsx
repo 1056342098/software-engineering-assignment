@@ -56,11 +56,16 @@ export function StudentsPage() {
         body: formData,
       });
       const data = await res.json();
-      if (data.code !== 200) throw new Error(data.message || "导入失败");
+      if (data.code !== 200) {
+        throw new Error(data.message || "导入失败");
+      }
       await refresh();
       if (fileInputRef.current) fileInputRef.current.value = "";
+      alert("导入成功");
     } catch (err) {
       showError((err as Error).message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
