@@ -1,7 +1,7 @@
 import { showError } from "../components/ErrorModal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, getToken } from "../api";
+import { apiFetch, apiFetchBlob } from "../api";
 import { useAuth } from "../auth";
 
 type StudentDto = {
@@ -49,18 +49,11 @@ export function StudentsPage() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const token = getToken();
-      const res = await fetch("/api/students/import", {
+      await apiFetch("/students/import", {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      const data = await res.json();
-      if (data.code !== 200) {
-        throw new Error(data.message || "导入失败");
-      }
       await refresh();
-      if (fileInputRef.current) fileInputRef.current.value = "";
       alert("导入成功");
     } catch (err) {
       showError((err as Error).message);
@@ -70,13 +63,7 @@ export function StudentsPage() {
   }
 
   function handleExport() {
-    const token = getToken();
-    const url = "/api/students/export";
-    fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then((res) => {
-        if (!res.ok) throw new Error("导出失败");
-        return res.blob();
-      })
+    apiFetchBlob("/students/export")
       .then((blob) => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
