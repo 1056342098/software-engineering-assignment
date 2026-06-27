@@ -54,7 +54,7 @@ public class StudentController {
 	}
 
 	@PostMapping
-	@PreAuthorize("hasRole('LEADER')")
+	@PreAuthorize("hasAnyRole('LEADER','TEACHER')")
 	public ApiResponse<Void> createOrUpdateStudent(@Valid @RequestBody StudentSaveRequest request) {
 		studentService.saveStudent(request);
 		return ApiResponse.ok(null);

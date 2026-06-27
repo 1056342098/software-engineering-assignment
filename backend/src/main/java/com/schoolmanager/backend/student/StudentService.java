@@ -59,7 +59,13 @@ public class StudentService {
 
 	@Transactional
 	public void saveStudent(StudentSaveRequest req) {
-		Student student = studentRepository.findByStudentNo(req.studentNo()).orElse(null);
+		Student student = null;
+		if (req.id() != null) {
+			student = studentRepository.findById(req.id()).orElse(null);
+		}
+		if (student == null) {
+			student = studentRepository.findByStudentNo(req.studentNo()).orElse(null);
+		}
 		SysUser user;
 		boolean isNewUser = false;
 		

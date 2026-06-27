@@ -2,6 +2,7 @@ import { showError } from "../components/ErrorModal";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api";
+import { useAuth } from "../auth";
 
 type Competition = { name?: string; level?: string; year?: number };
 type Practice = { name?: string; hours?: number };
@@ -26,21 +27,64 @@ type ProfileResp = {
 };
 
 export function StudentDetailPage() {
+  const { hasRole } = useAuth();
   const params = useParams();
   const studentId = Number(params.studentId);
   const [data, setData] = useState<ProfileResp | null>(null);
   const [studentProgress, setStudentProgress] = useState<{ serverNow: string; items: any[] } | null>(null);
-  
-  useEffect(() => {
+
+  const [showSensitiveModal, setShowSensitiveModal] = useState(false);
+  const [sensitiveForm, setSensitiveForm] = useState({
+    idCardNo: "",
+    hukouAddr: "",
+    hometown: "",
+    tutor: "",
+    delayInfo: ""
+  });
+
+  async function refresh() {
     if (!studentId) return;
-        void apiFetch<ProfileResp>(`/profile/students/${studentId}`, { method: "GET" })
-      .then(setData)
-      .catch((e) => showError((e as Error).message));
-      
-    void apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${studentId}`, { method: "GET" })
-      .then(setStudentProgress)
-      .catch(() => {});
+    try {
+      const res = await apiFetch<ProfileResp>(`/profile/students/${studentId}`, { method: "GET" });
+      setData(res);
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+    if (studentId) {
+      void apiFetch<{ serverNow: string; items: any[] }>(`/approvals/progress/student/${studentId}`, { method: "GET" })
+        .then(setStudentProgress)
+        .catch(() => {});
+    }
   }, [studentId]);
+
+  function handleEditSensitive() {
+    const s = data?.sensitive as Record<string, string> | undefined;
+    setSensitiveForm({
+      idCardNo: s?.idCardNo ?? "",
+      hukouAddr: s?.hukouAddr ?? "",
+      hometown: s?.hometown ?? "",
+      tutor: s?.tutor ?? "",
+      delayInfo: s?.delayInfo ?? ""
+    });
+    setShowSensitiveModal(true);
+  }
+
+  async function handleSaveSensitive() {
+    try {
+      await apiFetch(`/profile/students/${studentId}/sensitive`, {
+        method: "PUT",
+        body: JSON.stringify(sensitiveForm),
+      });
+      setShowSensitiveModal(false);
+      await refresh();
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  }
 
   const comps = data?.public?.competitions ?? [];
   const practices = data?.public?.practices ?? [];
@@ -88,7 +132,12 @@ export function StudentDetailPage() {
           <section className="card">
             <div className="cardHeader">
               <div style={{ fontWeight: 600 }}>敏感信息</div>
-              {sensitiveMasked ? <span className="badge badgeWarn">已脱敏</span> : <span className="badge badgeOk">可见</span>}
+              <div className="row" style={{ gap: 8 }}>
+                {sensitiveMasked ? <span className="badge badgeWarn">已脱敏</span> : <span className="badge badgeOk">可见</span>}
+                {hasRole("LEADER", "TEACHER") && !sensitiveMasked && (
+                  <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={handleEditSensitive}>编辑</button>
+                )}
+              </div>
             </div>
             <div className="cardBody">
               {data.sensitive == null ? (
@@ -214,6 +263,25 @@ export function StudentDetailPage() {
           )}
         </div>
       ) : null}
+
+      {showSensitiveModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="card" style={{ width: 400, maxWidth: "90%" }}>
+            <div className="cardBody grid" style={{ gap: 12 }}>
+              <h3>编辑敏感信息</h3>
+              <input className="input" placeholder="身份证号" value={sensitiveForm.idCardNo} onChange={(e) => setSensitiveForm({ ...sensitiveForm, idCardNo: e.target.value })} />
+              <input className="input" placeholder="户口所在地" value={sensitiveForm.hukouAddr} onChange={(e) => setSensitiveForm({ ...sensitiveForm, hukouAddr: e.target.value })} />
+              <input className="input" placeholder="生源地" value={sensitiveForm.hometown} onChange={(e) => setSensitiveForm({ ...sensitiveForm, hometown: e.target.value })} />
+              <input className="input" placeholder="导师/辅导员" value={sensitiveForm.tutor} onChange={(e) => setSensitiveForm({ ...sensitiveForm, tutor: e.target.value })} />
+              <textarea className="input" placeholder="延毕/学籍异动信息" value={sensitiveForm.delayInfo} onChange={(e) => setSensitiveForm({ ...sensitiveForm, delayInfo: e.target.value })} rows={3} />
+              <div className="row" style={{ justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <button className="btn" onClick={() => setShowSensitiveModal(false)}>取消</button>
+                <button className="btn btnPrimary" onClick={() => void handleSaveSensitive()}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

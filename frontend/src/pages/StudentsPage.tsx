@@ -19,7 +19,7 @@ export function StudentsPage() {
   const [q, setQ] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ studentNo: "", realName: "", major: "", grade: "", className: "" });
+  const [addForm, setAddForm] = useState({ id: undefined as number | undefined, studentNo: "", realName: "", major: "", grade: "", className: "" });
 
   async function refresh() {
     try {
@@ -84,11 +84,23 @@ export function StudentsPage() {
         }),
       });
       setShowAddModal(false);
-      setAddForm({ studentNo: "", realName: "", major: "", grade: "", className: "" });
+      setAddForm({ id: undefined, studentNo: "", realName: "", major: "", grade: "", className: "" });
       await refresh();
     } catch (e) {
       showError((e as Error).message);
     }
+  }
+
+  function handleEdit(s: StudentDto) {
+    setAddForm({
+      id: s.id,
+      studentNo: s.studentNo ?? "",
+      realName: s.realName ?? "",
+      major: s.major ?? "",
+      grade: s.grade?.toString() ?? "",
+      className: s.className ?? "",
+    });
+    setShowAddModal(true);
   }
 
   async function handleDelete(id: number) {
@@ -108,7 +120,10 @@ export function StudentsPage() {
         <div className="row" style={{ gap: 8 }}>
           {hasRole("LEADER") && (
             <>
-              <button className="btn btnPrimary" onClick={() => setShowAddModal(true)}>录入</button>
+              <button className="btn btnPrimary" onClick={() => {
+                setAddForm({ id: undefined, studentNo: "", realName: "", major: "", grade: "", className: "" });
+                setShowAddModal(true);
+              }}>录入</button>
               <button className="btn" onClick={() => fileInputRef.current?.click()}>导入Excel</button>
               <input type="file" ref={fileInputRef} style={{ display: "none" }} accept=".xlsx,.xls" onChange={(e) => void handleImport(e)} />
             </>
@@ -145,6 +160,19 @@ export function StudentsPage() {
                   <Link to={`/students/${s.id}`} style={{ textDecoration: "none" }}>
                     <span className="badge badgePrimary">查看详情</span>
                   </Link>
+                  {hasRole("LEADER", "TEACHER") && (
+                    <span 
+                      className="badge badgePrimary" 
+                      style={{ cursor: "pointer", background: "var(--primary)" }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleEdit(s);
+                      }}
+                    >
+                      编辑
+                    </span>
+                  )}
                   {hasRole("LEADER") && (
                     <span 
                       className="badge badgeWarn" 
@@ -169,7 +197,7 @@ export function StudentsPage() {
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div className="card" style={{ width: 400, maxWidth: "90%" }}>
             <div className="cardBody grid" style={{ gap: 12 }}>
-              <h3>录入学生信息</h3>
+              <h3>{addForm.id ? "编辑学生信息" : "录入学生信息"}</h3>
               <input className="input" placeholder="学号" value={addForm.studentNo} onChange={(e) => setAddForm({ ...addForm, studentNo: e.target.value })} />
               <input className="input" placeholder="姓名" value={addForm.realName} onChange={(e) => setAddForm({ ...addForm, realName: e.target.value })} />
               <input className="input" placeholder="专业" value={addForm.major} onChange={(e) => setAddForm({ ...addForm, major: e.target.value })} />
