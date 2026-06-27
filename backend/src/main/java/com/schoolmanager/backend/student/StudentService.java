@@ -64,11 +64,11 @@ public class StudentService {
 			user.getRoles().add(studentRole);
 		}
 
-		user = sysUserRepository.save(user);
+		SysUser savedUser = sysUserRepository.save(user);
 
-		Student student = studentRepository.findById(user.getId()).orElseGet(() -> {
+		Student student = studentRepository.findById(savedUser.getId()).orElseGet(() -> {
 			Student s = new Student();
-			s.setUser(user);
+			s.setUser(savedUser);
 			return s;
 		});
 
