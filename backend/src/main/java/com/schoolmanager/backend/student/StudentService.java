@@ -66,11 +66,17 @@ public class StudentService {
 
 		SysUser savedUser = sysUserRepository.save(user);
 
-		Student student = studentRepository.findById(savedUser.getId()).orElseGet(() -> {
-			Student s = new Student();
-			s.setUser(savedUser);
-			return s;
-		});
+		Student student;
+		if (isNew) {
+			student = new Student();
+			student.setUser(savedUser);
+		} else {
+			student = studentRepository.findById(savedUser.getId()).orElseGet(() -> {
+				Student s = new Student();
+				s.setUser(savedUser);
+				return s;
+			});
+		}
 
 		student.setStudentNo(req.studentNo());
 		student.setMajor(req.major());
@@ -84,13 +90,19 @@ public class StudentService {
 	public void importStudents(MultipartFile file) {
 		try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
 			Sheet sheet = workbook.getSheetAt(0);
+			int successCount = 0;
+			StringBuilder errors = new StringBuilder();
+
 			for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 				Row row = sheet.getRow(i);
 				if (row == null) continue;
 
 				String studentNo = getCellValueAsString(row.getCell(0));
 				String realName = getCellValueAsString(row.getCell(1));
-				if (studentNo.isBlank() || realName.isBlank()) continue;
+				if (studentNo.isBlank() || realName.isBlank()) {
+					errors.append(String.format("第%d行：学号或姓名为空；", i + 1));
+					continue;
+				}
 
 				String major = getCellValueAsString(row.getCell(2));
 				String gradeStr = getCellValueAsString(row.getCell(3));
@@ -99,15 +111,32 @@ public class StudentService {
 					try {
 						grade = Integer.parseInt(gradeStr.replace(".0", ""));
 					} catch (NumberFormatException e) {
-						// ignore
+						errors.append(String.format("第%d行：年级格式不正确；", i + 1));
+						continue;
 					}
 				}
 				String className = getCellValueAsString(row.getCell(4));
 
-				saveStudent(new StudentSaveRequest(studentNo, realName, major, grade, className));
+				try {
+					saveStudent(new StudentSaveRequest(studentNo, realName, major, grade, className));
+					successCount++;
+				} catch (Exception e) {
+					errors.append(String.format("第%d行：保存失败(%s)；", i + 1, e.getMessage()));
+				}
+			}
+
+			if (errors.length() > 0) {
+				if (successCount == 0) {
+					throw new RuntimeException("导入全部失败: " + errors.toString());
+				} else {
+					throw new RuntimeException("部分导入成功 (" + successCount + "条)。失败记录: " + errors.toString());
+				}
 			}
 		} catch (Exception e) {
-			throw new RuntimeException("Excel导入失败: " + e.getMessage(), e);
+			if (e instanceof RuntimeException) {
+				throw (RuntimeException) e;
+			}
+			throw new RuntimeException("Excel导入处理异常: " + e.getMessage(), e);
 		}
 	}
 
