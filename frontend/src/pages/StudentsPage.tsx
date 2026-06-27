@@ -174,7 +174,6 @@ export function StudentsPage() {
                 </div>
               </div>
             </div>
-          </div>
         ))}
         {filtered.length === 0 ? <div className="muted">暂无学生数据或无权限查看。</div> : null}
       </div>
