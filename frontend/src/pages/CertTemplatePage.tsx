@@ -23,8 +23,8 @@ export function CertTemplatePage() {
 
   const loadTemplates = async () => {
     try {
-      const res = await apiFetch("/api/certificates/templates");
-      setTemplates(res.data || []);
+      const res = await apiFetch<Template[]>("/certificates/templates");
+      setTemplates(res || []);
     } catch (e: any) {
       showError(e.message);
     } finally {
@@ -59,15 +59,21 @@ export function CertTemplatePage() {
     }
     try {
       if (editingId) {
-        await apiFetch(`/api/certificates/templates/${editingId}`, "POST", {
-          name: formName,
-          content: formContent,
-          enabled: formEnabled,
+        await apiFetch(`/certificates/templates/${editingId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: formName,
+            content: formContent,
+            enabled: formEnabled,
+          }),
         });
       } else {
-        await apiFetch("/api/certificates/templates", "POST", {
-          name: formName,
-          content: formContent,
+        await apiFetch("/certificates/templates", {
+          method: "POST",
+          body: JSON.stringify({
+            name: formName,
+            content: formContent,
+          }),
         });
       }
       setShowModal(false);
@@ -80,7 +86,7 @@ export function CertTemplatePage() {
   const deleteTemplate = async (id: number) => {
     if (!confirm("确认删除该模板吗？")) return;
     try {
-      await apiFetch(`/api/certificates/templates/${id}`, "DELETE");
+      await apiFetch(`/certificates/templates/${id}`, { method: "DELETE" });
       loadTemplates();
     } catch (e: any) {
       showError(e.message);
