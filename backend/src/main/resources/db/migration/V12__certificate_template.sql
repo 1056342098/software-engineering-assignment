@@ -8,4 +8,4 @@ CREATE TABLE certificate_template (
 );
 
 INSERT INTO certificate_template (name, content) VALUES
-('在读证明', '兹证明 ${realName}（学号：${studentNo}），系我校 ${major} 专业 ${grade} 级 ${className} 班全日制在读本科生。\n\n特此证明。');
+('在读证明', '兹证明 $${realName}（学号：$${studentNo}），系我校 $${major} 专业 $${grade} 级 $${className} 班全日制在读本科生。\n\n特此证明。');
