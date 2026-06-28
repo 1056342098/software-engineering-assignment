@@ -12,6 +12,7 @@ export function Layout() {
     { to: "/approvals", label: "党团事务", show: auth.hasRole("STUDENT") },
     { to: "/selftest", label: "党团理论自测", show: auth.hasRole("STUDENT") },
     { to: "/timeline-admin", label: "时间线配置", show: auth.hasRole("LEADER", "ADMIN") },
+    { to: "/cert-templates", label: "证明模板", show: auth.hasRole("LEADER", "TEACHER") },
     { to: "/pending", label: "审批中心", show: auth.hasRole("TEACHER", "LEADER") },
     { to: "/students", label: "我的学生", show: auth.hasRole("TEACHER", "LEADER", "CADRE") },
     { to: "/profile", label: "我的画像", show: true },

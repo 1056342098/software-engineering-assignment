@@ -12,6 +12,7 @@ import { Navigate } from "react-router-dom";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { StudentsPage } from "./pages/StudentsPage";
 import { TimelineAdminPage } from "./pages/TimelineAdminPage";
+import { CertTemplatePage } from "./pages/CertTemplatePage";
 import { QaTestPage } from "./pages/QaTestPage";
 import { ErrorModal } from "./components/ErrorModal";
 import { NotificationsPage } from "./pages/NotificationsPage";
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/timeline-admin" element={<TimelineAdminPage />} />
+            <Route path="/cert-templates" element={<CertTemplatePage />} />
             <Route path="/selftest" element={<QaTestPage />} />
           </Route>
         </Route>

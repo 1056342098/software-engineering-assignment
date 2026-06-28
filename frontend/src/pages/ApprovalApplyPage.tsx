@@ -8,7 +8,7 @@ type UserDto = { id: number; loginName: string; realName: string };
 export function ApprovalApplyPage() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
-  const [type, setType] = useState<"PARTY_APPLY" | "LEAGUE_APPLY" | "OTHER">("PARTY_APPLY");
+  const [type, setType] = useState<"PARTY_APPLY" | "LEAGUE_APPLY" | "CERTIFICATE_APPLY" | "OTHER">("PARTY_APPLY");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [teachers, setTeachers] = useState<UserDto[]>([]);
@@ -17,13 +17,40 @@ export function ApprovalApplyPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  
+
+  const [templates, setTemplates] = useState<{id: number, name: string}[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | "">("");
+
   useEffect(() => {
     const t = searchParams.get("type");
-    if (t === "PARTY_APPLY" || t === "LEAGUE_APPLY" || t === "OTHER") {
+    if (t === "PARTY_APPLY" || t === "LEAGUE_APPLY" || t === "CERTIFICATE_APPLY" || t === "OTHER") {
       setType(t);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (type === "CERTIFICATE_APPLY" && templates.length === 0) {
+      apiFetch<{id: number, name: string}[]>("/certificates/templates/enabled", { method: "GET" })
+        .then(res => {
+          setTemplates(res || []);
+          if (res && res.length > 0) {
+            setSelectedTemplateId(res[0].id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [type]);
+
+  const generatePreview = async () => {
+    if (!selectedTemplateId) return;
+    try {
+      const res = await apiFetch<string>(`/certificates/preview/${selectedTemplateId}`, { method: "GET" });
+      setContent(res || "");
+      if (!subject) setSubject("电子证明申请");
+    } catch (e: any) {
+      showError(e.message);
+    }
+  };
 
   useEffect(() => {
         void Promise.all([
@@ -128,10 +155,28 @@ export function ApprovalApplyPage() {
                 <select className="select" value={type} onChange={(e) => setType(e.target.value as typeof type)} style={{ width: 200 }}>
                   <option value="PARTY_APPLY">入党申请</option>
                   <option value="LEAGUE_APPLY">入团申请</option>
+                  <option value="CERTIFICATE_APPLY">电子证明</option>
                   <option value="OTHER">其他</option>
                 </select>
                 <input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="主题（必填）" style={{ flex: 1 }} />
               </div>
+
+              {type === "CERTIFICATE_APPLY" && (
+                <div className="grid" style={{ gap: 6, background: "var(--surface-2)", padding: 12, borderRadius: 10 }}>
+                  <div className="kvKey">选择证明模板</div>
+                  <div className="row" style={{ gap: 10 }}>
+                    <select className="select" value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(Number(e.target.value))} style={{ flex: 1 }}>
+                      {templates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <button className="btn btnPrimary" onClick={generatePreview} disabled={!selectedTemplateId}>
+                      生成预览
+                    </button>
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }}>点击“生成预览”将自动拉取您的基础信息并填充至下方说明框中，可进一步编辑。</div>
+                </div>
+              )}
 
               <div className="grid" style={{ gap: 6 }}>
                 <div className="kvKey">说明</div>

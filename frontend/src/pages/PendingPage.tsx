@@ -303,7 +303,8 @@ export function PendingPage() {
 function typeLabel(type: string) {
   if (type === "PARTY_APPLY") return "入党申请";
   if (type === "LEAGUE_APPLY") return "入团申请";
-  if (type === "OTHER") return "其他";
+  if (type === "CERTIFICATE_APPLY") return "电子证明";
+  if (type === "OTHER") return "其他申请";
   return type;
 }
 

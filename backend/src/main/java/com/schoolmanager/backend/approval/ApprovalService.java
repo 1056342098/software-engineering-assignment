@@ -35,6 +35,7 @@ import java.util.Map;
 public class ApprovalService {
 	public static final String TYPE_PARTY = "PARTY_APPLY";
 	public static final String TYPE_LEAGUE = "LEAGUE_APPLY";
+	public static final String TYPE_CERTIFICATE = "CERTIFICATE_APPLY";
 	public static final String TYPE_OTHER = "OTHER";
 
 	public static final String STATUS_PENDING = "PENDING";
@@ -141,7 +142,7 @@ public class ApprovalService {
 
 	@Transactional
 	public Approval create(long applicantId, String type, long approverId, Map<String, Object> form) {
-		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type)) {
+		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type) && !TYPE_CERTIFICATE.equals(type)) {
 			throw new ApiException(400, "无效的申请类型");
 		}
 		SysUser applicant = userRepository.findById(applicantId)
@@ -202,7 +203,7 @@ public class ApprovalService {
 			String content,
 			List<Long> approverIds,
 			List<MultipartFile> files) {
-		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type)) {
+		if (!TYPE_PARTY.equals(type) && !TYPE_LEAGUE.equals(type) && !TYPE_OTHER.equals(type) && !TYPE_CERTIFICATE.equals(type)) {
 			throw new ApiException(400, "无效的申请类型");
 		}
 		String sub = subject == null ? "" : subject.strip();
